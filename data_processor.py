@@ -7,6 +7,7 @@ Este script contiene toda la lógica de backend para cargar, limpiar y transform
 import pandas as pd
 import numpy as np
 import os
+import io
 import shutil
 import tempfile
 import requests
