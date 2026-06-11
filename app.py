@@ -109,11 +109,19 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
             curr = min_date
             while curr <= max_date:
                 date_str = curr.strftime('%d/%m/%Y')
-                target_sum += daily_targets.get(date_str, 0)
+                val = daily_targets.get(date_str, 0)
+                if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
+                    target_sum += 7.33
+                else:
+                    target_sum += val
                 curr += pd.Timedelta(days=1)
             targets.append(int(round(target_sum)))
         else:
-            targets.append(int(round(monthly_targets.get(month_num, 0))))
+            m_target = monthly_targets.get(month_num, 0)
+            if doc_name == 'SEBASTIAN GIL GALLEGO':
+                targets.append(int(round((m_target / 7.0) * 7.33)))
+            else:
+                targets.append(int(round(m_target)))
     return targets
 
 
@@ -122,7 +130,11 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
     output = io.BytesIO()
 
     df_export_dia = dp.get_consolidated_hours_by_date(df)
-    df_export_dia['HORAS_A_LABORAR'] = df_export_dia['FECHA_STR'].map(daily_targets).fillna(0)
+    df_export_dia['HORAS_A_LABORAR'] = df_export_dia.apply(
+        lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
+                  else daily_targets.get(r['FECHA_STR'], 0),
+        axis=1
+    )
     df_export_dia['TOTAL'] = df_export_dia['HORAS_TOTALES'] - df_export_dia['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         df_export_dia[col] = df_export_dia[col].round(0).astype(int)
@@ -602,7 +614,11 @@ agrupacion_vista = st.session_state.agrupacion_sel
 if agrupacion_vista == "Por Día":
     tabla_consolidada_vista = dp.get_consolidated_hours_by_date(df_filtrado)
     daily_targets = st.session_state.get('daily_targets', {})
-    tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista['FECHA_STR'].map(daily_targets).fillna(0)
+    tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista.apply(
+        lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
+                  else daily_targets.get(r['FECHA_STR'], 0),
+        axis=1
+    )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
