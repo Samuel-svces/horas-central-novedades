@@ -329,3 +329,56 @@ def load_calendar_targets(file_source):
     return monthly_targets, daily_targets
 
 
+def get_consolidated_hours_by_week(df):
+    """
+    Agrupa y sumariza las horas totales trabajadas por Semana, Cédula y Nombre.
+    La semana se define como Lunes-Sábado.
+    :param df: DataFrame limpio
+    :return: DataFrame agrupado por semana
+    """
+    df_copy = df.copy()
+
+    # Filtrar registros sin fecha válida
+    df_copy = df_copy[df_copy['FECHA_CLEAN'].notna()].copy()
+
+    if df_copy.empty:
+        return pd.DataFrame(columns=[
+            'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
+            'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES_NUM',
+            'SEMANA_FIN', 'SEMANA', 'FECHA_INICIO_STR', 'FECHA_FIN_STR'
+        ])
+
+    # Calcular el lunes de cada semana (dayofweek: Lunes=0, Domingo=6)
+    df_copy['SEMANA_INICIO'] = df_copy['FECHA_CLEAN'] - pd.to_timedelta(
+        df_copy['FECHA_CLEAN'].dt.dayofweek, unit='D'
+    )
+    df_copy['SEMANA_INICIO'] = df_copy['SEMANA_INICIO'].dt.normalize()
+
+    # Agrupar por semana, cédula y nombre
+    grouped = df_copy.groupby(
+        ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
+    ).agg(
+        HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+        CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count'),
+        MES_NUM=('MES_NUM', 'first')
+    )
+
+    # Calcular fecha fin de la semana (sábado = lunes + 5 días)
+    grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
+    grouped['SEMANA'] = grouped.apply(
+        lambda r: f"{r['SEMANA_INICIO'].strftime('%d/%m')} - {r['SEMANA_FIN'].strftime('%d/%m/%Y')}"
+        if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
+        axis=1
+    )
+
+    # Guardar fechas inicio/fin como strings para lookup de daily_targets
+    grouped['FECHA_INICIO_STR'] = grouped['SEMANA_INICIO'].dt.strftime('%d/%m/%Y').fillna('')
+    grouped['FECHA_FIN_STR'] = grouped['SEMANA_FIN'].dt.strftime('%d/%m/%Y').fillna('')
+
+    # Ordenar por semana descendente y nombre
+    grouped = grouped.sort_values(
+        by=['SEMANA_INICIO', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]
+    ).reset_index(drop=True)
+
+    return grouped
+
