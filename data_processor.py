@@ -206,8 +206,20 @@ def load_and_clean_data(file_source):
     df['MES'] = df['MES_NUM'].map(MESES_MAP).fillna('Sin Mes')
 
     # 7. Limpieza e Inteligencia de Cédulas (Mapear Cédulas Faltantes)
-    col_cedula_orig = 'CEDULA SUPERNUMERARIO'
-    if col_cedula_orig in df.columns:
+    col_cedula_orig = None
+    for col in df.columns:
+        col_norm = str(col).strip().upper()
+        # Normalizar acentos comunes
+        col_norm = col_norm.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        if col_norm in [
+            'CEDULA SUPERNUMERARIO', 'CEDULA SUPERNUMERARIOS', 'CEDULAS SUPERNUMERARIOS', 
+            'CEDULA SUPER', 'CEDULAS SUPER', 'CEDULA_SUPERNUMERARIO', 'CEDULA_SUPERNUMERARIOS',
+            'IDENTIFICACION SUPERNUMERARIO', 'IDENTIFICACION_SUPERNUMERARIO'
+        ]:
+            col_cedula_orig = col
+            break
+
+    if col_cedula_orig:
         df['CEDULA_PROCESADA'] = df[col_cedula_orig].apply(clean_cedula_val)
         
         # Crear base de conocimientos: Mapear Nombre -> Cédula a partir de registros que sí tienen cédula
