@@ -174,12 +174,6 @@ def load_and_clean_data(file_source):
         )
 
     # 4. Filtrar y limpiar registros vacíos o no válidos de Médicos
-    # Omitir filas donde la columna original SUPERNUMERARIOS esté vacía,
-    # ya que indica que no se asignó un médico supernumerario real para el turno.
-    if 'SUPERNUMERARIOS' in df.columns:
-        df = df[df['SUPERNUMERARIOS'].notnull()]
-        df = df[df['SUPERNUMERARIOS'].astype(str).str.strip() != '']
-        
     df = df[df[col_name].notnull()]
     df[col_name] = df[col_name].astype(str).str.strip()
     df = df[df[col_name] != '']
