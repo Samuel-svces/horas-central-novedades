@@ -8,7 +8,10 @@ import pandas as pd
 import os
 import io
 import platform
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+def get_local_now():
+    return datetime.now(timezone(timedelta(hours=-5)))
 import data_processor as dp
 import base64
 import re
@@ -25,7 +28,7 @@ def save_to_downloads(data):
     except Exception:
         downloads_path = os.path.join(os.path.expanduser("~"), "Downloads")
     try:
-        filename = f"CONSOLIDADO_HORAS_SUPERNUMERARIOS_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        filename = f"CONSOLIDADO_HORAS_SUPERNUMERARIOS_{get_local_now().strftime('%Y%m%d')}.xlsx"
         full_path = os.path.join(downloads_path, filename)
         with open(full_path, "wb") as f:
             f.write(data)
@@ -84,7 +87,7 @@ def cargar_desde_onedrive():
             st.session_state.monthly_targets = m_targets
             st.session_state.daily_targets = d_targets
             st.session_state.load_error = None
-            st.session_state.last_refresh = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+            st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
     except Exception as e:
         st.session_state.df_raw = None
         st.session_state.load_error = str(e)
@@ -326,7 +329,7 @@ st.markdown(custom_css, unsafe_allow_html=True)
 # ── Session state ─────────────────────────────────────────────────────────────
 
 IS_LOCAL = platform.system() == "Windows"
-current_month_name = dp.MESES_MAP.get(datetime.now().month, "Enero")
+current_month_name = dp.MESES_MAP.get(get_local_now().month, "Enero")
 
 defaults = {
     'mes_sel': [current_month_name],
@@ -408,7 +411,7 @@ with col_config:
                         st.session_state.monthly_targets = m
                         st.session_state.daily_targets = d
                         st.session_state.load_error = None
-                        st.session_state.last_refresh = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                        st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
                         st.rerun()
                     except Exception as e:
                         st.session_state.load_error = str(e)
@@ -425,7 +428,7 @@ with col_config:
                     st.session_state.daily_targets = d
                     st.session_state.load_error = None
                     st.session_state.uploaded_file_name = uploaded_file.name
-                    st.session_state.last_refresh = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                    st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
                     st.rerun()
                 except Exception as e:
                     st.session_state.load_error = str(e)
@@ -460,7 +463,7 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
                 m, d = dp.load_calendar_targets(file_path)
                 st.session_state.monthly_targets = m
                 st.session_state.daily_targets = d
-                st.session_state.last_refresh = datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+                st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
             except Exception as e:
                 st.session_state.load_error = str(e)
         else:
@@ -580,7 +583,7 @@ with st.container(border=True):
         st.download_button(
             label="Exportar Excel",
             data=excel_data,
-            file_name=f"CONSOLIDADO_HORAS_SUPERNUMERARIOS_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            file_name=f"CONSOLIDADO_HORAS_SUPERNUMERARIOS_{get_local_now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             key="btn_export",
             use_container_width=True,
