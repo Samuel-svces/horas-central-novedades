@@ -115,13 +115,13 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
                 else:
                     target_sum += val
                 curr += pd.Timedelta(days=1)
-            targets.append(round(target_sum, 2))
+            targets.append(int(round(target_sum)))
         else:
             m_target = monthly_targets.get(month_num, 0)
             if doc_name == 'SEBASTIAN GIL GALLEGO':
-                targets.append(round((m_target / 7.0) * 7.33, 2))
+                targets.append(int(round((m_target / 7.0) * 7.33)))
             else:
-                targets.append(round(m_target, 2))
+                targets.append(int(round(m_target)))
     return targets
 
 
@@ -136,9 +136,8 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
         axis=1
     )
     df_export_dia['TOTAL'] = df_export_dia['HORAS_TOTALES'] - df_export_dia['HORAS_A_LABORAR']
-    df_export_dia['HORAS_TOTALES'] = df_export_dia['HORAS_TOTALES'].round(2)
-    df_export_dia['HORAS_A_LABORAR'] = df_export_dia['HORAS_A_LABORAR'].round(2)
-    df_export_dia['TOTAL'] = df_export_dia['TOTAL'].round(2)
+    for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
+        df_export_dia[col] = df_export_dia[col].round(0).astype(int)
     df_export_dia_rename = df_export_dia.rename(columns={
         'FECHA_STR': 'Fecha', 'CEDULA_FINAL': 'Cédula',
         'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
@@ -157,9 +156,8 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
     df_export_mes = dp.get_consolidated_hours(df)
     df_export_mes['HORAS_A_LABORAR'] = calculate_doctor_target_hours(df_export_mes, df, daily_targets, monthly_targets)
     df_export_mes['TOTAL'] = df_export_mes['HORAS_TOTALES'] - df_export_mes['HORAS_A_LABORAR']
-    df_export_mes['HORAS_TOTALES'] = df_export_mes['HORAS_TOTALES'].round(2)
-    df_export_mes['HORAS_A_LABORAR'] = df_export_mes['HORAS_A_LABORAR'].round(2)
-    df_export_mes['TOTAL'] = df_export_mes['TOTAL'].round(2)
+    for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
+        df_export_mes[col] = df_export_mes[col].round(0).astype(int)
     df_export_mes_rename = df_export_mes.rename(columns={
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'MES': 'Mes', 'HORAS_A_LABORAR': 'Horas a laborar',
@@ -622,9 +620,8 @@ if agrupacion_vista == "Por Día":
         axis=1
     )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
-    tabla_consolidada_vista['HORAS_TOTALES'] = tabla_consolidada_vista['HORAS_TOTALES'].round(2)
-    tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista['HORAS_A_LABORAR'].round(2)
-    tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['TOTAL'].round(2)
+    for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
+        tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 else:
     tabla_consolidada_vista = tabla_consolidada.copy()
     monthly_targets = st.session_state.get('monthly_targets', {})
@@ -633,9 +630,8 @@ else:
         tabla_consolidada_vista, df_filtrado, daily_targets, monthly_targets
     )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
-    tabla_consolidada_vista['HORAS_TOTALES'] = tabla_consolidada_vista['HORAS_TOTALES'].round(2)
-    tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista['HORAS_A_LABORAR'].round(2)
-    tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['TOTAL'].round(2)
+    for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
+        tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 
 if not tabla_consolidada_vista.empty:
     tot_horas_a_laborar = tabla_consolidada_vista['HORAS_A_LABORAR'].sum()
@@ -678,7 +674,7 @@ else:
 tabla_display_formatted = tabla_display[cols_show].copy()
 for col in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']:
     if col in tabla_display_formatted.columns:
-        tabla_display_formatted[col] = pd.to_numeric(tabla_display_formatted[col], errors='coerce').fillna(0).round(2)
+        tabla_display_formatted[col] = pd.to_numeric(tabla_display_formatted[col], errors='coerce').fillna(0).round(0).astype(int)
 
 html_table = tabla_display_formatted.to_html(index=False, classes='custom-table', escape=False)
 
