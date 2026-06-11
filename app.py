@@ -125,6 +125,31 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
     return targets
 
 
+def calculate_weekly_target_hours(df_weekly, daily_targets):
+    """Calcula las horas a laborar por semana sumando daily_targets de lunes a domingo."""
+    targets = []
+    for idx, row in df_weekly.iterrows():
+        doc_name = row['NOMBRE SUPER VALIDADO']
+        inicio = row.get('SEMANA_INICIO')
+        fin = row.get('SEMANA_FIN')
+        if pd.notna(inicio) and pd.notna(fin):
+            target_sum = 0
+            curr = pd.Timestamp(inicio)
+            end = pd.Timestamp(fin)
+            while curr <= end:
+                date_str = curr.strftime('%d/%m/%Y')
+                val = daily_targets.get(date_str, 0)
+                if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
+                    target_sum += 7.33
+                else:
+                    target_sum += val
+                curr += pd.Timedelta(days=1)
+            targets.append(int(round(target_sum)))
+        else:
+            targets.append(0)
+    return targets
+
+
 @st.cache_data
 def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
     output = io.BytesIO()
@@ -189,15 +214,39 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
         'RECARGO NOCTURNO ORDINARIO': 'Recargo Nocturno'
     })
 
+    df_export_semana = dp.get_consolidated_hours_by_week(df)
+    df_export_semana['HORAS_A_LABORAR'] = calculate_weekly_target_hours(df_export_semana, daily_targets)
+    df_export_semana['TOTAL'] = df_export_semana['HORAS_TOTALES'] - df_export_semana['HORAS_A_LABORAR']
+    for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
+        df_export_semana[col] = df_export_semana[col].round(0).astype(int)
+    df_export_semana_rename = df_export_semana.rename(columns={
+        'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
+        'SEMANA': 'Semana', 'HORAS_A_LABORAR': 'Horas a laborar',
+        'HORAS_TOTALES': 'Horas Laboradas', 'TOTAL': 'Total',
+        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
+    })
+    df_export_semana_rename = df_export_semana_rename[
+        ['Cédula', 'Médico Supernumerario', 'Semana', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+    ]
+    if not df_export_semana_rename.empty:
+        totales = {c: [df_export_semana_rename[c].sum()] if c in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+                   else (['TOTAL GENERAL'] if c == 'Médico Supernumerario' else [''])
+                   for c in df_export_semana_rename.columns}
+        df_export_semana_rename = pd.concat([df_export_semana_rename, pd.DataFrame(totales)], ignore_index=True)
+
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df_export_dia_rename.to_excel(writer, sheet_name='Consolidado por Día', index=False)
+        df_export_semana_rename.to_excel(writer, sheet_name='Consolidado por Semana', index=False)
         df_export_mes_rename.to_excel(writer, sheet_name='Consolidado por Mes', index=False)
         df_export_det_rename.to_excel(writer, sheet_name='Detalle Completo', index=False)
-        for sheet_name in ['Consolidado por Día', 'Consolidado por Mes', 'Detalle Completo']:
+        all_sheets = {
+            'Consolidado por Día': df_export_dia_rename,
+            'Consolidado por Semana': df_export_semana_rename,
+            'Consolidado por Mes': df_export_mes_rename,
+            'Detalle Completo': df_export_det_rename
+        }
+        for sheet_name, df_temp in all_sheets.items():
             worksheet = writer.sheets[sheet_name]
-            df_temp = (df_export_dia_rename if sheet_name == 'Consolidado por Día'
-                       else (df_export_mes_rename if sheet_name == 'Consolidado por Mes'
-                             else df_export_det_rename))
             for idx, col in enumerate(df_temp.columns):
                 val_lengths = [len(str(v)) for v in df_temp[col].dropna()]
                 max_len = max((max(val_lengths) if val_lengths else 0), len(str(col))) + 2
@@ -533,7 +582,7 @@ with st.container(border=True):
     c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 2.8, 1.0, 1.0, 1.0])
 
     with c1:
-        agrupacion_options = ["Por Día", "Por Mes"]
+        agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
         agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
@@ -622,6 +671,15 @@ if agrupacion_vista == "Por Día":
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
+elif agrupacion_vista == "Por Semana":
+    tabla_consolidada_vista = dp.get_consolidated_hours_by_week(df_filtrado)
+    daily_targets = st.session_state.get('daily_targets', {})
+    tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_weekly_target_hours(
+        tabla_consolidada_vista, daily_targets
+    )
+    tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
+    for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
+        tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 else:
     tabla_consolidada_vista = tabla_consolidada.copy()
     monthly_targets = st.session_state.get('monthly_targets', {})
@@ -662,6 +720,14 @@ if agrupacion_vista == "Por Día":
         'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
     })
     cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+elif agrupacion_vista == "Por Semana":
+    tabla_display = tabla_consolidada_vista.rename(columns={
+        'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
+        'SEMANA': 'Semana', 'HORAS_A_LABORAR': 'Horas a laborar',
+        'HORAS_TOTALES': 'Horas Laboradas', 'TOTAL': 'Total',
+        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
+    })
+    cols_show = ['Cédula', 'Médico Supernumerario', 'Semana', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
 else:
     tabla_display = tabla_consolidada_vista.rename(columns={
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
