@@ -105,15 +105,21 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
         max_date = doc_entries['FECHA_CLEAN'].max()
         min_date = doc_entries['FECHA_CLEAN'].min()
         if pd.notna(max_date) and pd.notna(min_date):
+            # Alinear al lunes de la semana de inicio y al domingo de la semana de fin
+            min_date_aligned = min_date - pd.to_timedelta(min_date.dayofweek, unit='D')
+            max_date_aligned = max_date + pd.to_timedelta(6 - max_date.dayofweek, unit='D')
+            
             target_sum = 0
-            curr = min_date
-            while curr <= max_date:
-                date_str = curr.strftime('%d/%m/%Y')
-                val = daily_targets.get(date_str, 0)
-                if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
-                    target_sum += 7.33
-                else:
-                    target_sum += val
+            curr = min_date_aligned
+            while curr <= max_date_aligned:
+                # Solo contar los días que pertenecen al mes que se está calculando
+                if curr.month == month_num:
+                    date_str = curr.strftime('%d/%m/%Y')
+                    val = daily_targets.get(date_str, 0)
+                    if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
+                        target_sum += 7.33
+                    else:
+                        target_sum += val
                 curr += pd.Timedelta(days=1)
             targets.append(int(round(target_sum)))
         else:
