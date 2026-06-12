@@ -83,6 +83,8 @@ def cargar_desde_onedrive():
             )
             st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
             file_bytes.seek(0)
+            st.session_state.df_super = dp.load_supernumerario_sheet(file_bytes)
+            file_bytes.seek(0)
             m_targets, d_targets = dp.load_calendar_targets(file_bytes)
             st.session_state.monthly_targets = m_targets
             st.session_state.daily_targets = d_targets
@@ -90,10 +92,11 @@ def cargar_desde_onedrive():
             st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
     except Exception as e:
         st.session_state.df_raw = None
+        st.session_state.df_super = None
         st.session_state.load_error = str(e)
 
 
-def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, monthly_targets):
+def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, monthly_targets, df_super=None):
     targets = []
     for idx, row in df_grouped.iterrows():
         doc_name = row['NOMBRE SUPER VALIDADO']
@@ -102,9 +105,35 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
             (df_raw_filtered['NOMBRE SUPER VALIDADO'] == doc_name) &
             (df_raw_filtered['MES_NUM'] == month_num)
         ]
-        max_date = doc_entries['FECHA_CLEAN'].max()
-        min_date = doc_entries['FECHA_CLEAN'].min()
+        
+        # Intentar determinar el primer y último turno basándonos en la hoja de supernumerarios
+        found_in_super = False
+        if df_super is not None and not df_super.empty:
+            doc_norm = dp.normalize_name(doc_name)
+            super_entries = df_super[
+                (df_super['NOMBRE_NORM'] == doc_norm) &
+                (df_super['FECHA_CLEAN'].dt.month == month_num)
+            ]
+            if not super_entries.empty:
+                max_date = super_entries['FECHA_CLEAN'].max()
+                min_date = super_entries['FECHA_CLEAN'].min()
+                found_in_super = True
+        
+        if not found_in_super:
+            max_date = doc_entries['FECHA_CLEAN'].max()
+            min_date = doc_entries['FECHA_CLEAN'].min()
+            
         if pd.notna(max_date) and pd.notna(min_date):
+            # Si el médico trabajó/estuvo en la primera semana y en la última semana del mes,
+            # se considera activo todo el mes y se le asigna la meta mensual completa.
+            if min_date.day <= 7 and max_date.day >= (max_date.days_in_month - 6):
+                m_target = monthly_targets.get(month_num, 0)
+                if doc_name == 'SEBASTIAN GIL GALLEGO':
+                    targets.append(int(round((m_target / 7.0) * 7.33)))
+                else:
+                    targets.append(int(round(m_target)))
+                continue
+                
             # Alinear al lunes de la semana de inicio y al domingo de la semana de fin
             min_date_aligned = min_date - pd.to_timedelta(min_date.dayofweek, unit='D')
             max_date_aligned = max_date + pd.to_timedelta(6 - max_date.dayofweek, unit='D')
@@ -157,7 +186,7 @@ def calculate_weekly_target_hours(df_weekly, daily_targets):
 
 
 @st.cache_data
-def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
+def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, df_super=None):
     output = io.BytesIO()
 
     df_export_dia = dp.get_consolidated_hours_by_date(df)
@@ -185,7 +214,7 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det):
         df_export_dia_rename = pd.concat([df_export_dia_rename, pd.DataFrame(totales)], ignore_index=True)
 
     df_export_mes = dp.get_consolidated_hours(df)
-    df_export_mes['HORAS_A_LABORAR'] = calculate_doctor_target_hours(df_export_mes, df, daily_targets, monthly_targets)
+    df_export_mes['HORAS_A_LABORAR'] = calculate_doctor_target_hours(df_export_mes, df, daily_targets, monthly_targets, df_super=df_super)
     df_export_mes['TOTAL'] = df_export_mes['HORAS_TOTALES'] - df_export_mes['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         df_export_mes[col] = df_export_mes[col].round(0).astype(int)
@@ -410,6 +439,7 @@ defaults = {
     'file_path_input': r"C:\Users\JuanJoseOsorioMolina\OneDrive - U.T SAN VICENTE CES\CONSOLIDADO 2026.xlsx",
     'uploaded_file_name': None,
     'df_raw': None,
+    'df_super': None,
     'load_error': None,
     'last_refresh': None,
     'monthly_targets': {},
@@ -474,6 +504,7 @@ with col_config:
                 if os.path.exists(file_path):
                     try:
                         st.session_state.df_raw = dp.load_and_clean_data(file_path)
+                        st.session_state.df_super = dp.load_supernumerario_sheet(file_path)
                         m, d = dp.load_calendar_targets(file_path)
                         st.session_state.monthly_targets = m
                         st.session_state.daily_targets = d
@@ -483,12 +514,13 @@ with col_config:
                     except Exception as e:
                         st.session_state.load_error = str(e)
 
-            st.markdown("---")
             uploaded_file = st.file_uploader("O sube el archivo manualmente:", type=["xlsx", "xls"])
             if uploaded_file is not None:
                 try:
                     file_bytes = io.BytesIO(uploaded_file.read())
                     st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
+                    file_bytes.seek(0)
+                    st.session_state.df_super = dp.load_supernumerario_sheet(file_bytes)
                     file_bytes.seek(0)
                     m, d = dp.load_calendar_targets(file_bytes)
                     st.session_state.monthly_targets = m
@@ -527,6 +559,7 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
         if os.path.exists(file_path):
             try:
                 st.session_state.df_raw = dp.load_and_clean_data(file_path)
+                st.session_state.df_super = dp.load_supernumerario_sheet(file_path)
                 m, d = dp.load_calendar_targets(file_path)
                 st.session_state.monthly_targets = m
                 st.session_state.daily_targets = d
@@ -646,7 +679,7 @@ with st.container(border=True):
         cols_to_export_det = [c for c in detalle_cols_base if c in df_filtrado.columns]
         daily_targets = st.session_state.get('daily_targets', {})
         monthly_targets = st.session_state.get('monthly_targets', {})
-        excel_data = generate_excel_data(df_filtrado, daily_targets, monthly_targets, cols_to_export_det)
+        excel_data = generate_excel_data(df_filtrado, daily_targets, monthly_targets, cols_to_export_det, df_super=st.session_state.get('df_super'))
         st.download_button(
             label="Exportar Excel",
             data=excel_data,
@@ -691,7 +724,7 @@ else:
     monthly_targets = st.session_state.get('monthly_targets', {})
     daily_targets = st.session_state.get('daily_targets', {})
     tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_doctor_target_hours(
-        tabla_consolidada_vista, df_filtrado, daily_targets, monthly_targets
+        tabla_consolidada_vista, df_filtrado, daily_targets, monthly_targets, df_super=st.session_state.get('df_super')
     )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
