@@ -12,6 +12,9 @@ import shutil
 import tempfile
 import requests
 import msal
+import unicodedata
+import re
+
 
 # Mapeo de meses de inglés/número a español
 MESES_MAP = {
@@ -381,4 +384,57 @@ def get_consolidated_hours_by_week(df):
     ).reset_index(drop=True)
 
     return grouped
+
+
+def normalize_name(name):
+    if pd.isna(name):
+        return ""
+    # Quitar acentos y eñes
+    name_str = str(name)
+    normalized = unicodedata.normalize('NFKD', name_str).encode('ASCII', 'ignore').decode('ASCII')
+    # Convertir a mayúsculas y quitar caracteres que no sean letras, números o espacios
+    normalized = re.sub(r'[^A-Z0-9\s]', '', normalized.upper())
+    # Colapsar múltiples espacios
+    return ' '.join(normalized.split())
+
+
+def load_supernumerario_sheet(file_source):
+    """
+    Carga la hoja SUPERNUMERARIO si existe en el archivo.
+    Retorna un DataFrame limpio o None si no existe.
+    """
+    safe_source, cleanup = get_safe_file_source(file_source)
+    try:
+        try:
+            xl = pd.ExcelFile(safe_source)
+            sheet_names = xl.sheet_names
+            target_sheet = None
+            for s in sheet_names:
+                if s.strip().upper() in ['SUPERNUMERARIO', 'SUPERNUMERARIOS']:
+                    target_sheet = s
+                    break
+            
+            if target_sheet:
+                df = pd.read_excel(xl, sheet_name=target_sheet)
+                df.columns = [str(col).strip() for col in df.columns]
+                
+                # Normalizar columnas Fecha, Nombre
+                col_fecha = None
+                col_nombre = None
+                for col in df.columns:
+                    col_norm = col.upper()
+                    if col_norm == 'FECHA':
+                        col_fecha = col
+                    elif col_norm in ['NOMBRE', 'NOMBRE SUPERNUMERARIO', 'MEDICO']:
+                        col_nombre = col
+                
+                if col_fecha and col_nombre:
+                    df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
+                    df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
+                    return df[['FECHA_CLEAN', 'NOMBRE_NORM']].dropna()
+        except Exception:
+            pass
+    finally:
+        cleanup()
+    return None
 
