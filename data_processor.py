@@ -240,48 +240,148 @@ def load_and_clean_data(file_source):
     return df
 
 
-def get_consolidated_hours(df):
+def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
+    """
+    Genera un DataFrame a nivel diario para cada médico activo en el mes,
+    cubriendo todo su periodo activo (alineado a semanas y acotado al mes).
+    """
+    if df.empty or not daily_targets:
+        return pd.DataFrame(columns=[
+            'FECHA_CLEAN', 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
+            'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES', 'MES_NUM', 'HORAS_A_LABORAR'
+        ])
+        
+    df_worked = df.groupby(['FECHA_CLEAN', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
+        HORAS_TRABAJADAS=('HORAS TOTALES DECIMAL', 'sum'),
+        CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+    )
+    
+    medicos_meses = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).size()
+    daily_rows = []
+    
+    for idx, row in medicos_meses.iterrows():
+        cedula = row['CEDULA_FINAL']
+        doc_name = row['NOMBRE SUPER VALIDADO']
+        month_name = row['MES']
+        month_num = row['MES_NUM']
+        
+        found_in_super = False
+        if df_super is not None and not df_super.empty:
+            doc_norm = normalize_name(doc_name)
+            super_entries = df_super[
+                (df_super['NOMBRE_NORM'] == doc_norm) &
+                (df_super['FECHA_CLEAN'].dt.month == month_num)
+            ]
+            if not super_entries.empty:
+                max_date = super_entries['FECHA_CLEAN'].max()
+                min_date = super_entries['FECHA_CLEAN'].min()
+                found_in_super = True
+                
+        if not found_in_super:
+            doc_entries = df[
+                (df['NOMBRE SUPER VALIDADO'] == doc_name) &
+                (df['MES_NUM'] == month_num)
+            ]
+            max_date = doc_entries['FECHA_CLEAN'].max()
+            min_date = doc_entries['FECHA_CLEAN'].min()
+            
+        if pd.notna(min_date) and pd.notna(max_date):
+            if min_date.day <= 7 and max_date.day >= (max_date.days_in_month - 6):
+                min_date_aligned = pd.Timestamp(year=min_date.year, month=month_num, day=1)
+                max_date_aligned = pd.Timestamp(year=max_date.year, month=month_num, day=max_date.days_in_month)
+            else:
+                min_date_aligned = min_date - pd.to_timedelta(min_date.dayofweek, unit='D')
+                max_date_aligned = max_date + pd.to_timedelta(6 - max_date.dayofweek, unit='D')
+            
+            curr = min_date_aligned
+            while curr <= max_date_aligned:
+                if curr.month == month_num:
+                    date_str = curr.strftime('%d/%m/%Y')
+                    worked_day = df_worked[
+                        (df_worked['FECHA_CLEAN'] == curr) &
+                        (df_worked['NOMBRE SUPER VALIDADO'] == doc_name)
+                    ]
+                    if not worked_day.empty:
+                        horas_trabajadas = worked_day.iloc[0]['HORAS_TRABAJADAS']
+                        novedades = worked_day.iloc[0]['CANTIDAD_NOVEDADES']
+                    else:
+                        horas_trabajadas = 0.0
+                        novedades = 0
+                        
+                    val = daily_targets.get(date_str, 0)
+                    if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
+                        horas_a_laborar = 7.33
+                    else:
+                        horas_a_laborar = val
+                        
+                    daily_rows.append({
+                        'FECHA_CLEAN': curr,
+                        'FECHA_STR': date_str,
+                        'CEDULA_FINAL': cedula,
+                        'NOMBRE SUPER VALIDADO': doc_name,
+                        'HORAS_TOTALES': horas_trabajadas,
+                        'CANTIDAD_NOVEDADES': novedades,
+                        'MES': month_name,
+                        'MES_NUM': month_num,
+                        'HORAS_A_LABORAR': horas_a_laborar
+                    })
+                curr += pd.Timedelta(days=1)
+                
+    return pd.DataFrame(daily_rows)
+
+
+def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Cédula, Nombre y Mes.
-    :param df: DataFrame limpio
-    :return: DataFrame agrupado
     """
-    # Agrupar por las columnas solicitadas
+    if daily_targets is not None and monthly_targets is not None:
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super)
+        if df_daily.empty:
+            return pd.DataFrame(columns=[
+                'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM',
+                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR'
+            ])
+        grouped = df_daily.groupby(
+            ['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False
+        ).agg(
+            HORAS_TOTALES=('HORAS_TOTALES', 'sum'),
+            CANTIDAD_NOVEDADES=('CANTIDAD_NOVEDADES', 'sum'),
+            HORAS_A_LABORAR=('HORAS_A_LABORAR', 'sum')
+        )
+        grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
+        return grouped
+
     grouped = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).agg(
         HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
         CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
     )
-    
-    # Ordenar por mes (numérico) y luego por nombre para mejor legibilidad
     grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
-    # Eliminar columna auxiliar de ordenamiento de mes si se desea, pero la conservamos para ordenar la visualización
     return grouped
 
-def get_consolidated_hours_by_date(df):
+def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Fecha (YYYY-MM-DD), Cédula y Nombre.
-    :param df: DataFrame limpio
-    :return: DataFrame agrupado por fecha
     """
+    if daily_targets is not None and monthly_targets is not None:
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super)
+        if df_daily.empty:
+            return pd.DataFrame(columns=[
+                'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
+                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR'
+            ])
+        df_daily = df_daily.sort_values(by=['FECHA_CLEAN', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]).reset_index(drop=True)
+        return df_daily[['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR']]
+
     df_copy = df.copy()
-    
-    # Formatear la fecha como string YYYY-MM-DD para agrupar y ordenar cronológicamente
     df_copy['FECHA_STR'] = df_copy['FECHA_CLEAN'].dt.strftime('%Y-%m-%d')
     df_copy['FECHA_STR'] = df_copy['FECHA_STR'].fillna('Sin Fecha')
-    
-    # Agrupar por fecha, cédula y nombre
     grouped = df_copy.groupby(['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
         HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
         CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
     )
-    
-    # Ordenar por fecha (descendente, la más reciente primero) y luego por nombre
     grouped = grouped.sort_values(by=['FECHA_STR', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]).reset_index(drop=True)
-    
-    # Convertir a formato Dia/mes/año (DD/MM/YYYY) para la visualización y exportación
     temp_date = pd.to_datetime(grouped['FECHA_STR'], format='%Y-%m-%d', errors='coerce')
     grouped['FECHA_STR'] = temp_date.dt.strftime('%d/%m/%Y').fillna(grouped['FECHA_STR'])
-    
     return grouped
 
 def load_calendar_targets(file_source):
@@ -332,32 +432,56 @@ def load_calendar_targets(file_source):
     return monthly_targets, daily_targets
 
 
-def get_consolidated_hours_by_week(df):
+def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Semana, Cédula y Nombre.
-    La semana se define como Lunes-Sábado.
-    :param df: DataFrame limpio
-    :return: DataFrame agrupado por semana
     """
+    if daily_targets is not None and monthly_targets is not None:
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super)
+        if df_daily.empty:
+            return pd.DataFrame(columns=[
+                'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
+                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES_NUM',
+                'SEMANA_FIN', 'SEMANA', 'FECHA_INICIO_STR', 'FECHA_FIN_STR', 'HORAS_A_LABORAR'
+            ])
+        df_copy = df_daily.copy()
+        df_copy['SEMANA_INICIO'] = df_copy['FECHA_CLEAN'] - pd.to_timedelta(
+            df_copy['FECHA_CLEAN'].dt.dayofweek, unit='D'
+        )
+        df_copy['SEMANA_INICIO'] = df_copy['SEMANA_INICIO'].dt.normalize()
+        grouped = df_copy.groupby(
+            ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
+        ).agg(
+            HORAS_TOTALES=('HORAS_TOTALES', 'sum'),
+            CANTIDAD_NOVEDADES=('CANTIDAD_NOVEDADES', 'sum'),
+            HORAS_A_LABORAR=('HORAS_A_LABORAR', 'sum'),
+            MES_NUM=('MES_NUM', 'first')
+        )
+        grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
+        grouped['SEMANA'] = grouped.apply(
+            lambda r: f"{r['SEMANA_INICIO'].strftime('%d/%m')} - {r['SEMANA_FIN'].strftime('%d/%m/%Y')}"
+            if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
+            axis=1
+        )
+        grouped['FECHA_INICIO_STR'] = grouped['SEMANA_INICIO'].dt.strftime('%d/%m/%Y').fillna('')
+        grouped['FECHA_FIN_STR'] = grouped['SEMANA_FIN'].dt.strftime('%d/%m/%Y').fillna('')
+        grouped = grouped.sort_values(
+            by=['SEMANA_INICIO', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]
+        ).reset_index(drop=True)
+        return grouped
+
     df_copy = df.copy()
-
-    # Filtrar registros sin fecha válida
     df_copy = df_copy[df_copy['FECHA_CLEAN'].notna()].copy()
-
     if df_copy.empty:
         return pd.DataFrame(columns=[
             'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
             'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES_NUM',
             'SEMANA_FIN', 'SEMANA', 'FECHA_INICIO_STR', 'FECHA_FIN_STR'
         ])
-
-    # Calcular el lunes de cada semana (dayofweek: Lunes=0, Domingo=6)
     df_copy['SEMANA_INICIO'] = df_copy['FECHA_CLEAN'] - pd.to_timedelta(
         df_copy['FECHA_CLEAN'].dt.dayofweek, unit='D'
     )
     df_copy['SEMANA_INICIO'] = df_copy['SEMANA_INICIO'].dt.normalize()
-
-    # Agrupar por semana, cédula y nombre
     grouped = df_copy.groupby(
         ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
     ).agg(
@@ -365,24 +489,17 @@ def get_consolidated_hours_by_week(df):
         CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count'),
         MES_NUM=('MES_NUM', 'first')
     )
-
-    # Calcular fecha fin de la semana (sábado = lunes + 5 días)
     grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
     grouped['SEMANA'] = grouped.apply(
         lambda r: f"{r['SEMANA_INICIO'].strftime('%d/%m')} - {r['SEMANA_FIN'].strftime('%d/%m/%Y')}"
         if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
         axis=1
     )
-
-    # Guardar fechas inicio/fin como strings para lookup de daily_targets
     grouped['FECHA_INICIO_STR'] = grouped['SEMANA_INICIO'].dt.strftime('%d/%m/%Y').fillna('')
     grouped['FECHA_FIN_STR'] = grouped['SEMANA_FIN'].dt.strftime('%d/%m/%Y').fillna('')
-
-    # Ordenar por semana descendente y nombre
     grouped = grouped.sort_values(
         by=['SEMANA_INICIO', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]
     ).reset_index(drop=True)
-
     return grouped
 
 

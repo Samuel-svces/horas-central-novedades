@@ -13,6 +13,8 @@ from datetime import datetime, timedelta, timezone
 def get_local_now():
     return datetime.now(timezone(timedelta(hours=-5)))
 import data_processor as dp
+import importlib
+importlib.reload(dp)
 import base64
 import re
 
@@ -97,6 +99,8 @@ def cargar_desde_onedrive():
 
 
 def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, monthly_targets, df_super=None):
+    if 'HORAS_A_LABORAR' in df_grouped.columns:
+        return df_grouped['HORAS_A_LABORAR'].tolist()
     targets = []
     for idx, row in df_grouped.iterrows():
         doc_name = row['NOMBRE SUPER VALIDADO']
@@ -162,6 +166,8 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
 
 def calculate_weekly_target_hours(df_weekly, daily_targets):
     """Calcula las horas a laborar por semana sumando daily_targets de lunes a domingo."""
+    if 'HORAS_A_LABORAR' in df_weekly.columns:
+        return df_weekly['HORAS_A_LABORAR'].tolist()
     targets = []
     for idx, row in df_weekly.iterrows():
         doc_name = row['NOMBRE SUPER VALIDADO']
@@ -189,12 +195,13 @@ def calculate_weekly_target_hours(df_weekly, daily_targets):
 def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, df_super=None):
     output = io.BytesIO()
 
-    df_export_dia = dp.get_consolidated_hours_by_date(df)
-    df_export_dia['HORAS_A_LABORAR'] = df_export_dia.apply(
-        lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
-                  else daily_targets.get(r['FECHA_STR'], 0),
-        axis=1
-    )
+    df_export_dia = dp.get_consolidated_hours_by_date(df, daily_targets, monthly_targets, df_super)
+    if 'HORAS_A_LABORAR' not in df_export_dia.columns:
+        df_export_dia['HORAS_A_LABORAR'] = df_export_dia.apply(
+            lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
+                      else daily_targets.get(r['FECHA_STR'], 0),
+            axis=1
+        )
     df_export_dia['TOTAL'] = df_export_dia['HORAS_TOTALES'] - df_export_dia['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         df_export_dia[col] = df_export_dia[col].round(0).astype(int)
@@ -213,8 +220,9 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
                    for c in df_export_dia_rename.columns}
         df_export_dia_rename = pd.concat([df_export_dia_rename, pd.DataFrame(totales)], ignore_index=True)
 
-    df_export_mes = dp.get_consolidated_hours(df)
-    df_export_mes['HORAS_A_LABORAR'] = calculate_doctor_target_hours(df_export_mes, df, daily_targets, monthly_targets, df_super=df_super)
+    df_export_mes = dp.get_consolidated_hours(df, daily_targets, monthly_targets, df_super)
+    if 'HORAS_A_LABORAR' not in df_export_mes.columns:
+        df_export_mes['HORAS_A_LABORAR'] = calculate_doctor_target_hours(df_export_mes, df, daily_targets, monthly_targets, df_super=df_super)
     df_export_mes['TOTAL'] = df_export_mes['HORAS_TOTALES'] - df_export_mes['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         df_export_mes[col] = df_export_mes[col].round(0).astype(int)
@@ -249,8 +257,9 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
         'RECARGO NOCTURNO ORDINARIO': 'Recargo Nocturno'
     })
 
-    df_export_semana = dp.get_consolidated_hours_by_week(df)
-    df_export_semana['HORAS_A_LABORAR'] = calculate_weekly_target_hours(df_export_semana, daily_targets)
+    df_export_semana = dp.get_consolidated_hours_by_week(df, daily_targets, monthly_targets, df_super)
+    if 'HORAS_A_LABORAR' not in df_export_semana.columns:
+        df_export_semana['HORAS_A_LABORAR'] = calculate_weekly_target_hours(df_export_semana, daily_targets)
     df_export_semana['TOTAL'] = df_export_semana['HORAS_TOTALES'] - df_export_semana['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         df_export_semana[col] = df_export_semana[col].round(0).astype(int)
@@ -696,36 +705,38 @@ st.markdown("<hr style='margin-top:-15px; margin-bottom:10px; border:0; border-t
 
 # ── Tabla consolidada ─────────────────────────────────────────────────────────
 
-tabla_consolidada = dp.get_consolidated_hours(df_filtrado)
+daily_targets = st.session_state.get('daily_targets', {})
+monthly_targets = st.session_state.get('monthly_targets', {})
+df_super = st.session_state.get('df_super')
+
 agrupacion_vista = st.session_state.agrupacion_sel
 
 if agrupacion_vista == "Por Día":
-    tabla_consolidada_vista = dp.get_consolidated_hours_by_date(df_filtrado)
-    daily_targets = st.session_state.get('daily_targets', {})
-    tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista.apply(
-        lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
-                  else daily_targets.get(r['FECHA_STR'], 0),
-        axis=1
-    )
+    tabla_consolidada_vista = dp.get_consolidated_hours_by_date(df_filtrado, daily_targets, monthly_targets, df_super)
+    if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
+        tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista.apply(
+            lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
+                      else daily_targets.get(r['FECHA_STR'], 0),
+            axis=1
+        )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 elif agrupacion_vista == "Por Semana":
-    tabla_consolidada_vista = dp.get_consolidated_hours_by_week(df_filtrado)
-    daily_targets = st.session_state.get('daily_targets', {})
-    tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_weekly_target_hours(
-        tabla_consolidada_vista, daily_targets
-    )
+    tabla_consolidada_vista = dp.get_consolidated_hours_by_week(df_filtrado, daily_targets, monthly_targets, df_super)
+    if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
+        tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_weekly_target_hours(
+            tabla_consolidada_vista, daily_targets
+        )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 else:
-    tabla_consolidada_vista = tabla_consolidada.copy()
-    monthly_targets = st.session_state.get('monthly_targets', {})
-    daily_targets = st.session_state.get('daily_targets', {})
-    tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_doctor_target_hours(
-        tabla_consolidada_vista, df_filtrado, daily_targets, monthly_targets, df_super=st.session_state.get('df_super')
-    )
+    tabla_consolidada_vista = dp.get_consolidated_hours(df_filtrado, daily_targets, monthly_targets, df_super)
+    if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
+        tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_doctor_target_hours(
+            tabla_consolidada_vista, df_filtrado, daily_targets, monthly_targets, df_super=df_super
+        )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
