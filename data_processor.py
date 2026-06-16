@@ -158,6 +158,16 @@ def load_and_clean_data(file_source):
 
     # 2. Renombrar columnas para estandarizar en caso de ligeras variaciones de mayúsculas/minúsculas
     df.columns = [str(col).strip() for col in df.columns]
+
+    # Auto-recuperación: Si la primera columna (columna A) viene vacía o sin nombre en OneDrive,
+    # la renombramos a 'REVISION POR CENTRAL DE NOVEDADES' que es donde están las fechas de revisión.
+    if len(df.columns) > 0:
+        first_col = df.columns[0]
+        first_col_norm = str(first_col).strip().upper()
+        if first_col_norm in ['', 'NAN'] or first_col_norm.startswith('UNNAMED'):
+            cols = list(df.columns)
+            cols[0] = 'REVISION POR CENTRAL DE NOVEDADES'
+            df.columns = cols
     
     # 3. Validar columnas clave requeridas
     col_name = 'NOMBRE SUPER VALIDADO'
