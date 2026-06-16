@@ -85,7 +85,7 @@ def cargar_desde_onedrive():
             )
             st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
             file_bytes.seek(0)
-            st.session_state.df_super = dp.load_supernumerario_sheet(file_bytes)
+            st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
             file_bytes.seek(0)
             m_targets, d_targets = dp.load_calendar_targets(file_bytes)
             st.session_state.monthly_targets = m_targets
@@ -517,7 +517,7 @@ with col_config:
                 if os.path.exists(file_path):
                     try:
                         st.session_state.df_raw = dp.load_and_clean_data(file_path)
-                        st.session_state.df_super = dp.load_supernumerario_sheet(file_path)
+                        st.session_state.df_super = dp.load_supernumerario_sheets(file_path)
                         m, d = dp.load_calendar_targets(file_path)
                         st.session_state.monthly_targets = m
                         st.session_state.daily_targets = d
@@ -533,7 +533,7 @@ with col_config:
                     file_bytes = io.BytesIO(uploaded_file.read())
                     st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
                     file_bytes.seek(0)
-                    st.session_state.df_super = dp.load_supernumerario_sheet(file_bytes)
+                    st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
                     file_bytes.seek(0)
                     m, d = dp.load_calendar_targets(file_bytes)
                     st.session_state.monthly_targets = m
@@ -572,7 +572,7 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
         if os.path.exists(file_path):
             try:
                 st.session_state.df_raw = dp.load_and_clean_data(file_path)
-                st.session_state.df_super = dp.load_supernumerario_sheet(file_path)
+                st.session_state.df_super = dp.load_supernumerario_sheets(file_path)
                 m, d = dp.load_calendar_targets(file_path)
                 st.session_state.monthly_targets = m
                 st.session_state.daily_targets = d

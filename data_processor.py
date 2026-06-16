@@ -519,27 +519,41 @@ def normalize_name(name):
     return ' '.join(normalized.split())
 
 
-def load_supernumerario_sheet(file_source):
+def load_supernumerario_sheets(file_source):
     """
-    Carga la hoja SUPERNUMERARIO si existe en el archivo.
-    Retorna un DataFrame limpio o None si no existe.
+    Carga las hojas mensuales de supernumerarios (SUPERNUMERARIOS ENERO,
+    SUPERNUMERARIOS FEBRERO, etc.) y las combina en un solo DataFrame.
+    Cada hoja tiene columnas: Cedula, Nombre, Fecha, Zona, Cis.
+    Retorna un DataFrame con columnas [FECHA_CLEAN, NOMBRE_NORM, MES_NUM] o None.
     """
     safe_source, cleanup = get_safe_file_source(file_source)
     try:
         try:
             xl = pd.ExcelFile(safe_source)
             sheet_names = xl.sheet_names
-            target_sheet = None
-            for s in sheet_names:
-                if s.strip().upper() in ['SUPERNUMERARIO', 'SUPERNUMERARIOS']:
-                    target_sheet = s
-                    break
-            
-            if target_sheet:
-                df = pd.read_excel(xl, sheet_name=target_sheet)
+
+            # Mapeo de nombre de mes en español a número
+            mes_a_num = {
+                'ENERO': 1, 'FEBRERO': 2, 'MARZO': 3, 'ABRIL': 4,
+                'MAYO': 5, 'JUNIO': 6, 'JULIO': 7, 'AGOSTO': 8,
+                'SEPTIEMBRE': 9, 'OCTUBRE': 10, 'NOVIEMBRE': 11, 'DICIEMBRE': 12
+            }
+
+            all_dfs = []
+            for sheet in sheet_names:
+                sheet_upper = sheet.strip().upper()
+                # Buscar hojas con patrón "SUPERNUMERARIOS {MES}"
+                if not sheet_upper.startswith('SUPERNUMERARIOS '):
+                    continue
+                mes_name = sheet_upper.replace('SUPERNUMERARIOS ', '').strip()
+                month_num = mes_a_num.get(mes_name)
+                if month_num is None:
+                    continue
+
+                df = pd.read_excel(xl, sheet_name=sheet)
                 df.columns = [str(col).strip() for col in df.columns]
-                
-                # Normalizar columnas Fecha, Nombre
+
+                # Buscar columnas Fecha y Nombre
                 col_fecha = None
                 col_nombre = None
                 for col in df.columns:
@@ -548,14 +562,19 @@ def load_supernumerario_sheet(file_source):
                         col_fecha = col
                     elif col_norm in ['NOMBRE', 'NOMBRE SUPERNUMERARIO', 'MEDICO']:
                         col_nombre = col
-                
+
                 if col_fecha and col_nombre:
                     df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
                     df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
-                    return df[['FECHA_CLEAN', 'NOMBRE_NORM']].dropna()
+                    df['MES_NUM'] = month_num
+                    all_dfs.append(df[['FECHA_CLEAN', 'NOMBRE_NORM', 'MES_NUM']].dropna(subset=['FECHA_CLEAN', 'NOMBRE_NORM']))
+
+            if all_dfs:
+                return pd.concat(all_dfs, ignore_index=True)
         except Exception:
             pass
     finally:
         cleanup()
     return None
+
 
