@@ -264,16 +264,18 @@ def load_and_clean_data(file_source):
     return df
 
 
-def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
+def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_unfiltered=None):
     """
     Genera un DataFrame a nivel diario para cada médico activo en el mes,
-    cubriendo todo su periodo activo (alineado a semanas y acotado al mes).
+    cubriendo todo su periodo activo.
     """
     if df.empty or not daily_targets:
         return pd.DataFrame(columns=[
             'FECHA_CLEAN', 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
             'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES', 'MES_NUM', 'HORAS_A_LABORAR'
         ])
+        
+    df_ref = df_unfiltered if df_unfiltered is not None else df
         
     df_worked = df.groupby(['FECHA_CLEAN', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
         HORAS_TRABAJADAS=('HORAS TOTALES DECIMAL', 'sum'),
@@ -299,34 +301,59 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
             continue
         month_num = int(month_num)
         
-        found_in_super = False
+        # 1. Buscar todas las fechas de novedades del médico en todo el año (df_ref)
+        all_doc_dates = df_ref[df_ref['NOMBRE SUPER VALIDADO'] == doc_name]['FECHA_CLEAN'].dropna().tolist()
+        
+        # 2. Buscar todas las fechas en las hojas de supernumerarios (df_super) en todo el año
         if df_super is not None and not df_super.empty:
             doc_norm = normalize_name(doc_name)
-            super_entries = df_super[
-                (df_super['NOMBRE_NORM'] == doc_norm) &
-                (df_super['FECHA_CLEAN'].dt.month == month_num)
-            ]
-            if not super_entries.empty:
-                max_date = super_entries['FECHA_CLEAN'].max()
-                min_date = super_entries['FECHA_CLEAN'].min()
-                found_in_super = True
-                
-        if not found_in_super:
-            doc_entries = df[
-                (df['NOMBRE SUPER VALIDADO'] == doc_name) &
-                (df['MES_NUM'] == month_num)
-            ]
-            max_date = doc_entries['FECHA_CLEAN'].max()
-            min_date = doc_entries['FECHA_CLEAN'].min()
+            super_dates = df_super[df_super['NOMBRE_NORM'] == doc_norm]['FECHA_CLEAN'].dropna().tolist()
+            all_doc_dates.extend(super_dates)
             
-        if pd.notna(min_date) and pd.notna(max_date):
-            if min_date.day <= 7 and max_date.day >= (max_date.days_in_month - 6):
-                min_date_aligned = pd.Timestamp(year=min_date.year, month=month_num, day=1)
-                max_date_aligned = pd.Timestamp(year=max_date.year, month=month_num, day=max_date.days_in_month)
+        # 3. Determinar min_date y max_date del mes, pero expandiendo si hay actividad en otros meses
+        if all_doc_dates:
+            all_doc_dates = pd.to_datetime(all_doc_dates)
+            abs_min = all_doc_dates.min()
+            abs_max = all_doc_dates.max()
+            
+            # Fechas por defecto para este mes específico
+            doc_entries_month = df[(df['NOMBRE SUPER VALIDADO'] == doc_name) & (df['MES_NUM'] == month_num)]
+            month_min = doc_entries_month['FECHA_CLEAN'].min()
+            month_max = doc_entries_month['FECHA_CLEAN'].max()
+            
+            if df_super is not None and not df_super.empty:
+                doc_norm = normalize_name(doc_name)
+                super_entries_month = df_super[(df_super['NOMBRE_NORM'] == doc_norm) & (df_super['FECHA_CLEAN'].dt.month == month_num)]
+                if not super_entries_month.empty:
+                    month_min = min(month_min, super_entries_month['FECHA_CLEAN'].min()) if pd.notna(month_min) else super_entries_month['FECHA_CLEAN'].min()
+                    month_max = max(month_max, super_entries_month['FECHA_CLEAN'].max()) if pd.notna(month_max) else super_entries_month['FECHA_CLEAN'].max()
+            
+            # Si no hay registros en este mes, no tiene periodo activo este mes
+            if pd.isna(month_min) or pd.isna(month_max):
+                min_date_aligned = pd.NaT
+                max_date_aligned = pd.NaT
             else:
-                min_date_aligned = min_date
-                max_date_aligned = max_date
+                # Si tiene registros en meses ANTERIORES, asumimos que está activo desde el día 1 de este mes
+                if abs_min.month < month_num or abs_min.year < 2026:
+                    min_date_aligned = pd.Timestamp(year=2026, month=month_num, day=1)
+                else:
+                    min_date_aligned = month_min
+                    
+                # Si tiene registros en meses POSTERIORES, asumimos que está activo hasta el último día de este mes
+                days_in_month = pd.Period(f"2026-{month_num:02d}").days_in_month
+                if abs_max.month > month_num or abs_max.year > 2026:
+                    max_date_aligned = pd.Timestamp(year=2026, month=month_num, day=days_in_month)
+                else:
+                    # Si su último registro en este mes está en la última semana, también consideramos hasta fin de mes
+                    if month_max.day >= (days_in_month - 6):
+                        max_date_aligned = pd.Timestamp(year=2026, month=month_num, day=days_in_month)
+                    else:
+                        max_date_aligned = month_max
+        else:
+            min_date_aligned = pd.NaT
+            max_date_aligned = pd.NaT
             
+        if pd.notna(min_date_aligned) and pd.notna(max_date_aligned):
             # Obtener fecha actual en Colombia (UTC-5)
             from datetime import datetime, timezone, timedelta
             today_dt = datetime.now(timezone(timedelta(hours=-5))).date()
@@ -368,16 +395,17 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
                 
     df_res = pd.DataFrame(daily_rows)
     if not df_res.empty:
+        # Filtrar días no laborados que no tienen horas a laborar (ej. domingos y festivos sin novedades)
         df_res = df_res[~((df_res['HORAS_TOTALES'] == 0) & (df_res['HORAS_A_LABORAR'] == 0))]
     return df_res
 
 
-def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None):
+def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Cédula, Nombre y Mes.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM',
@@ -400,12 +428,12 @@ def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_supe
     grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
     return grouped
 
-def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None):
+def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Fecha (YYYY-MM-DD), Cédula y Nombre.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
@@ -474,12 +502,12 @@ def load_calendar_targets(file_source):
     return monthly_targets, daily_targets
 
 
-def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None):
+def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Semana, Cédula y Nombre.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
