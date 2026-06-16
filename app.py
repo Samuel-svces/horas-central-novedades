@@ -142,9 +142,9 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
                     targets.append(int(round(m_target)))
                 continue
                 
-            # Alinear al lunes de la semana de inicio y al domingo de la semana de fin
-            min_date_aligned = min_date - pd.to_timedelta(min_date.dayofweek, unit='D')
-            max_date_aligned = max_date + pd.to_timedelta(6 - max_date.dayofweek, unit='D')
+            # Usar directamente la fecha de inicio y fin real sin alinear al inicio/fin de la semana
+            min_date_aligned = min_date
+            max_date_aligned = max_date
             
             target_sum = 0
             curr = min_date_aligned

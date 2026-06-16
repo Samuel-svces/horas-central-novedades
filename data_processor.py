@@ -324,8 +324,8 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
                 min_date_aligned = pd.Timestamp(year=min_date.year, month=month_num, day=1)
                 max_date_aligned = pd.Timestamp(year=max_date.year, month=month_num, day=max_date.days_in_month)
             else:
-                min_date_aligned = min_date - pd.to_timedelta(min_date.dayofweek, unit='D')
-                max_date_aligned = max_date + pd.to_timedelta(6 - max_date.dayofweek, unit='D')
+                min_date_aligned = min_date
+                max_date_aligned = max_date
             
             # Obtener fecha actual en Colombia (UTC-5)
             from datetime import datetime, timezone, timedelta
