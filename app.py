@@ -148,9 +148,17 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
             
             target_sum = 0
             curr = min_date_aligned
+            today_date = get_local_now().date()
             while curr <= max_date_aligned:
                 # Solo contar los días que pertenecen al mes que se está calculando
                 if curr.month == month_num:
+                    # Omitir días futuros si no hay novedades registradas ese día
+                    if curr.date() > today_date:
+                        day_entries = doc_entries[doc_entries['FECHA_CLEAN'].dt.date == curr.date()]
+                        if day_entries.empty:
+                            curr += pd.Timedelta(days=1)
+                            continue
+                            
                     date_str = curr.strftime('%d/%m/%Y')
                     val = daily_targets.get(date_str, 0)
                     if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
@@ -168,11 +176,12 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
     return targets
 
 
-def calculate_weekly_target_hours(df_weekly, daily_targets):
+def calculate_weekly_target_hours(df_weekly, daily_targets, df_raw=None):
     """Calcula las horas a laborar por semana sumando daily_targets de lunes a domingo."""
     if 'HORAS_A_LABORAR' in df_weekly.columns:
         return df_weekly['HORAS_A_LABORAR'].tolist()
     targets = []
+    today_date = get_local_now().date()
     for idx, row in df_weekly.iterrows():
         doc_name = row['NOMBRE SUPER VALIDADO']
         inicio = row.get('SEMANA_INICIO')
@@ -181,7 +190,22 @@ def calculate_weekly_target_hours(df_weekly, daily_targets):
             target_sum = 0
             curr = pd.Timestamp(inicio)
             end = pd.Timestamp(fin)
+            
+            # Obtener registros del médico si tenemos df_raw para verificar días futuros trabajados
+            doc_entries = pd.DataFrame()
+            if df_raw is not None and not df_raw.empty:
+                doc_entries = df_raw[df_raw['NOMBRE SUPER VALIDADO'] == doc_name]
+                
             while curr <= end:
+                # Omitir días futuros si no hay novedades registradas ese día
+                if curr.date() > today_date:
+                    has_worked = False
+                    if not doc_entries.empty:
+                        has_worked = not doc_entries[doc_entries['FECHA_CLEAN'].dt.date == curr.date()].empty
+                    if not has_worked:
+                        curr += pd.Timedelta(days=1)
+                        continue
+                        
                 date_str = curr.strftime('%d/%m/%Y')
                 val = daily_targets.get(date_str, 0)
                 if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
@@ -263,7 +287,7 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
 
     df_export_semana = dp.get_consolidated_hours_by_week(df, daily_targets, monthly_targets, df_super)
     if 'HORAS_A_LABORAR' not in df_export_semana.columns:
-        df_export_semana['HORAS_A_LABORAR'] = calculate_weekly_target_hours(df_export_semana, daily_targets)
+        df_export_semana['HORAS_A_LABORAR'] = calculate_weekly_target_hours(df_export_semana, daily_targets, df)
     df_export_semana['TOTAL'] = df_export_semana['HORAS_TOTALES'] - df_export_semana['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         df_export_semana[col] = df_export_semana[col].round(0).astype(int)
@@ -730,7 +754,7 @@ elif agrupacion_vista == "Por Semana":
     tabla_consolidada_vista = dp.get_consolidated_hours_by_week(df_filtrado, daily_targets, monthly_targets, df_super)
     if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
         tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_weekly_target_hours(
-            tabla_consolidada_vista, daily_targets
+            tabla_consolidada_vista, daily_targets, df_filtrado
         )
     tabla_consolidada_vista['TOTAL'] = tabla_consolidada_vista['HORAS_TOTALES'] - tabla_consolidada_vista['HORAS_A_LABORAR']
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:

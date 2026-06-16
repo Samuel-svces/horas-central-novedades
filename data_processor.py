@@ -327,6 +327,10 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
                 min_date_aligned = min_date - pd.to_timedelta(min_date.dayofweek, unit='D')
                 max_date_aligned = max_date + pd.to_timedelta(6 - max_date.dayofweek, unit='D')
             
+            # Obtener fecha actual en Colombia (UTC-5)
+            from datetime import datetime, timezone, timedelta
+            today_dt = datetime.now(timezone(timedelta(hours=-5))).date()
+            
             curr = min_date_aligned
             while curr <= max_date_aligned:
                 if curr.month == month_num:
@@ -337,6 +341,11 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
                     else:
                         horas_trabajadas = 0.0
                         novedades = 0
+                        
+                    # Omitir días futuros si no hay novedades registradas ese día
+                    if curr.date() > today_dt and horas_trabajadas == 0:
+                        curr += pd.Timedelta(days=1)
+                        continue
                         
                     val = daily_targets.get(date_str, 0)
                     if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
