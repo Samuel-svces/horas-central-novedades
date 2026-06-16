@@ -361,13 +361,10 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                 limit_date = pd.to_datetime(limit_date)
                 # La fecha de traslado (limit_date) ya es plaza fija, por lo que el límite como supernumerario es limit_date - 1 día
                 target_limit = limit_date - pd.Timedelta(days=1)
-                if limit_date.month == month_num and limit_date.year == 2026:
-                    max_date_aligned = target_limit
+                if pd.notna(max_date_aligned):
+                    max_date_aligned = min(max_date_aligned, target_limit)
                 else:
-                    if pd.notna(max_date_aligned):
-                        max_date_aligned = min(max_date_aligned, target_limit)
-                    else:
-                        max_date_aligned = target_limit
+                    max_date_aligned = target_limit
             
         if pd.notna(min_date_aligned) and pd.notna(max_date_aligned):
             # Obtener fecha actual en Colombia (UTC-5)
