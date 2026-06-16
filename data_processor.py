@@ -265,6 +265,10 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
         month_name = row['MES']
         month_num = row['MES_NUM']
         
+        if pd.isna(month_num):
+            continue
+        month_num = int(month_num)
+        
         found_in_super = False
         if df_super is not None and not df_super.empty:
             doc_norm = normalize_name(doc_name)
