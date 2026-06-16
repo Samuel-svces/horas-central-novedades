@@ -264,7 +264,7 @@ def load_and_clean_data(file_source):
     return df
 
 
-def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_unfiltered=None):
+def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_unfiltered=None, plazas_fijas=None):
     """
     Genera un DataFrame a nivel diario para cada médico activo en el mes,
     cubriendo todo su periodo activo.
@@ -353,6 +353,23 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
             min_date_aligned = pd.NaT
             max_date_aligned = pd.NaT
             
+        # Validar con la hoja CONSOLIDADO PLAZAS FIJAS si existe
+        if plazas_fijas and pd.notna(min_date_aligned) and pd.notna(max_date_aligned):
+            doc_norm = normalize_name(doc_name)
+            pf_date = plazas_fijas.get(doc_norm)
+            if pf_date is not None:
+                pf_dt = pd.to_datetime(pf_date)
+                # Si la plaza fija es en un mes anterior al mes analizado, ya no es supernumerario en este mes
+                if pf_dt.year < 2026 or (pf_dt.year == 2026 and pf_dt.month < month_num):
+                    min_date_aligned = pd.NaT
+                    max_date_aligned = pd.NaT
+                # Si la plaza fija es exactamente en el mes actual, se limita la fecha final hasta la fecha de plaza fija
+                elif pf_dt.year == 2026 and pf_dt.month == month_num:
+                    max_date_aligned = pf_dt
+                    if min_date_aligned > max_date_aligned:
+                        min_date_aligned = pd.NaT
+                        max_date_aligned = pd.NaT
+
         if pd.notna(min_date_aligned) and pd.notna(max_date_aligned):
             # Obtener fecha actual en Colombia (UTC-5)
             from datetime import datetime, timezone, timedelta
@@ -400,12 +417,12 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
     return df_res
 
 
-def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None):
+def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plazas_fijas=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Cédula, Nombre y Mes.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plazas_fijas=plazas_fijas)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM',
@@ -428,12 +445,12 @@ def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_supe
     grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
     return grouped
 
-def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None):
+def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plazas_fijas=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Fecha (YYYY-MM-DD), Cédula y Nombre.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plazas_fijas=plazas_fijas)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
@@ -502,12 +519,12 @@ def load_calendar_targets(file_source):
     return monthly_targets, daily_targets
 
 
-def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None):
+def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plazas_fijas=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Semana, Cédula y Nombre.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plazas_fijas=plazas_fijas)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
@@ -642,5 +659,68 @@ def load_supernumerario_sheets(file_source):
     finally:
         cleanup()
     return None
+
+
+def load_plazas_fijas(file_source):
+    """
+    Carga la hoja CONSOLIDADO PLAZAS FIJAS si existe, identificando la fecha y el nombre del supernumerario.
+    Retorna un diccionario {nombre_normalizado: fecha_plaza_fija (Timestamp)} o None.
+    """
+    safe_source, cleanup = get_safe_file_source(file_source)
+    try:
+        xl = pd.ExcelFile(safe_source)
+        sheet_names = xl.sheet_names
+        
+        # Buscar hoja coincidente (insensible a mayúsculas y acentos)
+        target_sheet = None
+        for sheet in sheet_names:
+            sheet_norm = normalize_name(sheet)
+            if 'CONSOLIDADO PLAZAS FIJAS' in sheet_norm or 'CONSOLIDADO PLAZA FIJA' in sheet_norm or 'PLAZAS FIJAS' in sheet_norm:
+                target_sheet = sheet
+                break
+                
+        if not target_sheet:
+            return {}
+            
+        df = pd.read_excel(xl, sheet_name=target_sheet)
+        df.columns = [str(col).strip() for col in df.columns]
+        
+        # Identificar columnas
+        col_fecha = None
+        col_nombre = None
+        
+        # Buscar columna de fecha
+        for col in df.columns:
+            col_norm = normalize_name(col)
+            if 'FECHA' in col_norm:
+                col_fecha = col
+                break
+                
+        # Buscar columna de nombre
+        for col in df.columns:
+            col_norm = normalize_name(col)
+            if col_norm in ['NOMBRE', 'NOMBRES', 'NOMBRE SUPERNUMERARIO', 'MEDICO', 'SUPERNUMERARIO', 'NOMBRE SUPER VALIDADO']:
+                col_nombre = col
+                break
+                
+        if not col_nombre:
+            # Fallback a la primera columna tipo string
+            for col in df.columns:
+                if df[col].dtype == object and col != col_fecha:
+                    col_nombre = col
+                    break
+                    
+        if col_fecha and col_nombre:
+            df_clean = df[[col_nombre, col_fecha]].dropna().copy()
+            df_clean['NOMBRE_NORM'] = df_clean[col_nombre].apply(normalize_name)
+            df_clean['FECHA_CLEAN'] = pd.to_datetime(df_clean[col_fecha], errors='coerce')
+            df_clean = df_clean.dropna(subset=['FECHA_CLEAN'])
+            
+            return df_clean.set_index('NOMBRE_NORM')['FECHA_CLEAN'].to_dict()
+    except Exception as e:
+        pass
+    finally:
+        cleanup()
+    return {}
 
 
