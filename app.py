@@ -607,14 +607,6 @@ if st.session_state.df_raw is None:
 
 df_raw = st.session_state.df_raw
 
-# DIAGNOSTICO TEMPORAL (Solo en la nube)
-if not IS_LOCAL:
-    st.warning("🔍 **DIAGNÓSTICO DE COLUMNAS:**")
-    st.write("Columnas detectadas en el Excel de OneDrive:", list(df_raw.columns))
-    temp_arevalo = df_raw[df_raw['NOMBRE SUPER VALIDADO'].str.contains('GOMEZ AREVALO', case=False, na=False)]
-    if not temp_arevalo.empty:
-        st.write("Últimos 10 registros de María José:", temp_arevalo[['FECHA_CLEAN', 'MES', 'HORAS TOTALES DECIMAL']].tail(10))
-
 # ── Filtros ───────────────────────────────────────────────────────────────────
 
 df_filtrado = df_raw.copy()
