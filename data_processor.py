@@ -163,12 +163,23 @@ def load_and_clean_data(file_source):
     col_name = 'NOMBRE SUPER VALIDADO'
     col_horas = 'HORAS TOTALES DECIMAL'
     
-    # Buscar fecha en REVISION POR CENTRAL DE NOVEDADES o en F inic Novedad
+    # Buscar fecha en REVISION POR CENTRAL DE NOVEDADES o en F inic Novedad (insensible a mayúsculas y acentos)
     col_fecha = None
-    for option in ['REVISION POR CENTRAL DE NOVEDADES', 'F inic Novedad', 'FECHA']:
-        if option in df.columns:
-            col_fecha = option
+    
+    # 1. Buscar coincidencia para REVISION POR CENTRAL DE NOVEDADES
+    for col in df.columns:
+        col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        if col_norm == 'REVISION POR CENTRAL DE NOVEDADES':
+            col_fecha = col
             break
+            
+    # 2. Si no se encontró, buscar F INIC NOVEDAD o FECHA
+    if not col_fecha:
+        for col in df.columns:
+            col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+            if col_norm in ['F INIC NOVEDAD', 'FECHA']:
+                col_fecha = col
+                break
             
     if col_name not in df.columns or col_horas not in df.columns:
         raise ValueError(
