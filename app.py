@@ -105,6 +105,10 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
     for idx, row in df_grouped.iterrows():
         doc_name = row['NOMBRE SUPER VALIDADO']
         month_num = row['MES_NUM']
+        if pd.isna(month_num):
+            targets.append(0)
+            continue
+        month_num = int(month_num)
         doc_entries = df_raw_filtered[
             (df_raw_filtered['NOMBRE SUPER VALIDADO'] == doc_name) &
             (df_raw_filtered['MES_NUM'] == month_num)
