@@ -336,7 +336,10 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
                     })
                 curr += pd.Timedelta(days=1)
                 
-    return pd.DataFrame(daily_rows)
+    df_res = pd.DataFrame(daily_rows)
+    if not df_res.empty:
+        df_res = df_res[~((df_res['HORAS_TOTALES'] == 0) & (df_res['HORAS_A_LABORAR'] == 0))]
+    return df_res
 
 
 def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None):
