@@ -87,7 +87,7 @@ def cargar_desde_onedrive():
             file_bytes.seek(0)
             st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
             file_bytes.seek(0)
-            st.session_state.plazas_fijas = dp.load_plazas_fijas(file_bytes)
+            st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_bytes)
             file_bytes.seek(0)
             m_targets, d_targets = dp.load_calendar_targets(file_bytes)
             st.session_state.monthly_targets = m_targets
@@ -97,7 +97,6 @@ def cargar_desde_onedrive():
     except Exception as e:
         st.session_state.df_raw = None
         st.session_state.df_super = None
-        st.session_state.plazas_fijas = {}
         st.session_state.load_error = str(e)
 
 
@@ -223,10 +222,10 @@ def calculate_weekly_target_hours(df_weekly, daily_targets, df_raw=None):
 
 
 @st.cache_data
-def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, df_super=None, df_unfiltered=None, plazas_fijas=None):
+def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, df_super=None, df_unfiltered=None, plaza_fija_dates=None):
     output = io.BytesIO()
 
-    df_export_dia = dp.get_consolidated_hours_by_date(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plazas_fijas=plazas_fijas)
+    df_export_dia = dp.get_consolidated_hours_by_date(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates)
     if 'HORAS_A_LABORAR' not in df_export_dia.columns:
         df_export_dia['HORAS_A_LABORAR'] = df_export_dia.apply(
             lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
@@ -251,7 +250,7 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
                    for c in df_export_dia_rename.columns}
         df_export_dia_rename = pd.concat([df_export_dia_rename, pd.DataFrame(totales)], ignore_index=True)
 
-    df_export_mes = dp.get_consolidated_hours(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plazas_fijas=plazas_fijas)
+    df_export_mes = dp.get_consolidated_hours(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates)
     if 'HORAS_A_LABORAR' not in df_export_mes.columns:
         df_export_mes['HORAS_A_LABORAR'] = calculate_doctor_target_hours(df_export_mes, df, daily_targets, monthly_targets, df_super=df_super)
     df_export_mes['TOTAL'] = df_export_mes['HORAS_TOTALES'] - df_export_mes['HORAS_A_LABORAR']
@@ -288,7 +287,7 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
         'RECARGO NOCTURNO ORDINARIO': 'Recargo Nocturno'
     })
 
-    df_export_semana = dp.get_consolidated_hours_by_week(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plazas_fijas=plazas_fijas)
+    df_export_semana = dp.get_consolidated_hours_by_week(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates)
     if 'HORAS_A_LABORAR' not in df_export_semana.columns:
         df_export_semana['HORAS_A_LABORAR'] = calculate_weekly_target_hours(df_export_semana, daily_targets, df)
     df_export_semana['TOTAL'] = df_export_semana['HORAS_TOTALES'] - df_export_semana['HORAS_A_LABORAR']
@@ -480,9 +479,8 @@ defaults = {
     'uploaded_file_name': None,
     'df_raw': None,
     'df_super': None,
-    'plazas_fijas': {},
     'load_error': None,
-    'last_refresh': None,
+    'plaza_fija_dates': {},
     'monthly_targets': {},
     'daily_targets': {},
 }
@@ -546,7 +544,7 @@ with col_config:
                     try:
                         st.session_state.df_raw = dp.load_and_clean_data(file_path)
                         st.session_state.df_super = dp.load_supernumerario_sheets(file_path)
-                        st.session_state.plazas_fijas = dp.load_plazas_fijas(file_path)
+                        st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_path)
                         m, d = dp.load_calendar_targets(file_path)
                         st.session_state.monthly_targets = m
                         st.session_state.daily_targets = d
@@ -564,7 +562,7 @@ with col_config:
                     file_bytes.seek(0)
                     st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
                     file_bytes.seek(0)
-                    st.session_state.plazas_fijas = dp.load_plazas_fijas(file_bytes)
+                    st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_bytes)
                     file_bytes.seek(0)
                     m, d = dp.load_calendar_targets(file_bytes)
                     st.session_state.monthly_targets = m
@@ -604,7 +602,7 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
             try:
                 st.session_state.df_raw = dp.load_and_clean_data(file_path)
                 st.session_state.df_super = dp.load_supernumerario_sheets(file_path)
-                st.session_state.plazas_fijas = dp.load_plazas_fijas(file_path)
+                st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_path)
                 m, d = dp.load_calendar_targets(file_path)
                 st.session_state.monthly_targets = m
                 st.session_state.daily_targets = d
@@ -724,11 +722,7 @@ with st.container(border=True):
         cols_to_export_det = [c for c in detalle_cols_base if c in df_filtrado.columns]
         daily_targets = st.session_state.get('daily_targets', {})
         monthly_targets = st.session_state.get('monthly_targets', {})
-        excel_data = generate_excel_data(
-            df_filtrado, daily_targets, monthly_targets, cols_to_export_det,
-            df_super=st.session_state.get('df_super'), df_unfiltered=df_raw,
-            plazas_fijas=st.session_state.get('plazas_fijas', {})
-        )
+        excel_data = generate_excel_data(df_filtrado, daily_targets, monthly_targets, cols_to_export_det, df_super=st.session_state.get('df_super'), df_unfiltered=df_raw, plaza_fija_dates=st.session_state.get('plaza_fija_dates'))
         st.download_button(
             label="Exportar Excel",
             data=excel_data,
@@ -748,12 +742,11 @@ st.markdown("<hr style='margin-top:-15px; margin-bottom:10px; border:0; border-t
 daily_targets = st.session_state.get('daily_targets', {})
 monthly_targets = st.session_state.get('monthly_targets', {})
 df_super = st.session_state.get('df_super')
-plazas_fijas = st.session_state.get('plazas_fijas', {})
 
 agrupacion_vista = st.session_state.agrupacion_sel
 
 if agrupacion_vista == "Por Día":
-    tabla_consolidada_vista = dp.get_consolidated_hours_by_date(df_filtrado, daily_targets, monthly_targets, df_super, df_unfiltered=df_raw, plazas_fijas=plazas_fijas)
+    tabla_consolidada_vista = dp.get_consolidated_hours_by_date(df_filtrado, daily_targets, monthly_targets, df_super, df_unfiltered=df_raw, plaza_fija_dates=st.session_state.get('plaza_fija_dates'))
     if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
         tabla_consolidada_vista['HORAS_A_LABORAR'] = tabla_consolidada_vista.apply(
             lambda r: 7.33 if (r['NOMBRE SUPER VALIDADO'] == 'SEBASTIAN GIL GALLEGO' and daily_targets.get(r['FECHA_STR'], 0) == 7)
@@ -764,7 +757,7 @@ if agrupacion_vista == "Por Día":
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 elif agrupacion_vista == "Por Semana":
-    tabla_consolidada_vista = dp.get_consolidated_hours_by_week(df_filtrado, daily_targets, monthly_targets, df_super, df_unfiltered=df_raw, plazas_fijas=plazas_fijas)
+    tabla_consolidada_vista = dp.get_consolidated_hours_by_week(df_filtrado, daily_targets, monthly_targets, df_super, df_unfiltered=df_raw, plaza_fija_dates=st.session_state.get('plaza_fija_dates'))
     if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
         tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_weekly_target_hours(
             tabla_consolidada_vista, daily_targets, df_filtrado
@@ -773,7 +766,7 @@ elif agrupacion_vista == "Por Semana":
     for col in ['HORAS_TOTALES', 'HORAS_A_LABORAR', 'TOTAL']:
         tabla_consolidada_vista[col] = tabla_consolidada_vista[col].round(0).astype(int)
 else:
-    tabla_consolidada_vista = dp.get_consolidated_hours(df_filtrado, daily_targets, monthly_targets, df_super, df_unfiltered=df_raw, plazas_fijas=plazas_fijas)
+    tabla_consolidada_vista = dp.get_consolidated_hours(df_filtrado, daily_targets, monthly_targets, df_super, df_unfiltered=df_raw, plaza_fija_dates=st.session_state.get('plaza_fija_dates'))
     if 'HORAS_A_LABORAR' not in tabla_consolidada_vista.columns:
         tabla_consolidada_vista['HORAS_A_LABORAR'] = calculate_doctor_target_hours(
             tabla_consolidada_vista, df_filtrado, daily_targets, monthly_targets, df_super=df_super
