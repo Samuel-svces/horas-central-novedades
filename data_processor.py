@@ -259,6 +259,12 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
         CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
     )
     
+    # Crear un diccionario para búsquedas rápidas de días trabajados (O(1))
+    worked_dict = {
+        (row['FECHA_CLEAN'], row['NOMBRE SUPER VALIDADO']): (row['HORAS_TRABAJADAS'], row['CANTIDAD_NOVEDADES'])
+        for _, row in df_worked.iterrows()
+    }
+    
     medicos_meses = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).size()
     daily_rows = []
     
@@ -304,13 +310,9 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None):
             while curr <= max_date_aligned:
                 if curr.month == month_num:
                     date_str = curr.strftime('%d/%m/%Y')
-                    worked_day = df_worked[
-                        (df_worked['FECHA_CLEAN'] == curr) &
-                        (df_worked['NOMBRE SUPER VALIDADO'] == doc_name)
-                    ]
-                    if not worked_day.empty:
-                        horas_trabajadas = worked_day.iloc[0]['HORAS_TRABAJADAS']
-                        novedades = worked_day.iloc[0]['CANTIDAD_NOVEDADES']
+                    worked_info = worked_dict.get((curr, doc_name))
+                    if worked_info:
+                        horas_trabajadas, novedades = worked_info
                     else:
                         horas_trabajadas = 0.0
                         novedades = 0
