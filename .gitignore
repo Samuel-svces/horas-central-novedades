@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+temp_test.xlsx
+temp_test_output.xlsx
+temp_mashup.zip
+.streamlit/secrets.toml
