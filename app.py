@@ -480,6 +480,7 @@ defaults = {
     'df_raw': None,
     'df_super': None,
     'load_error': None,
+    'last_refresh': None,
     'plaza_fija_dates': {},
     'monthly_targets': {},
     'daily_targets': {},
