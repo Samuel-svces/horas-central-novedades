@@ -197,6 +197,9 @@ def load_and_clean_data(file_source):
         df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
     else:
         df['FECHA_CLEAN'] = pd.NaT
+
+    # Filtrar solo registros del año 2026
+    df = df[df['FECHA_CLEAN'].dt.year == 2026]
         
     # Extraer mes numérico y luego mapearlo al nombre en español
     df['MES_NUM'] = df['FECHA_CLEAN'].dt.month
