@@ -643,7 +643,8 @@ def normalize_name(name):
 def load_supernumerario_sheets(file_source):
     """
     Carga las hojas mensuales de supernumerarios (SUPERNUMERARIOS ENERO,
-    SUPERNUMERARIOS FEBRERO, etc.) y las combina en un solo DataFrame.
+    SUPERNUMERARIOS FEBRERO, etc.) o una hoja consolidada única "SUPERNUMERARIOS",
+    y las combina en un solo DataFrame.
     Cada hoja tiene columnas: Cedula, Nombre, Fecha, Zona, Cis.
     Retorna un DataFrame con columnas [FECHA_CLEAN, NOMBRE_NORM, MES_NUM] o None.
     """
@@ -661,9 +662,33 @@ def load_supernumerario_sheets(file_source):
             }
 
             all_dfs = []
+
+            # 1. Buscar si existe una hoja única consolidada llamada "SUPERNUMERARIOS"
+            super_single_sheets = [s for s in sheet_names if s.strip().upper() == 'SUPERNUMERARIOS']
+            if super_single_sheets:
+                sheet = super_single_sheets[0]
+                df = pd.read_excel(xl, sheet_name=sheet)
+                df.columns = [str(col).strip() for col in df.columns]
+
+                # Buscar columnas Fecha y Nombre
+                col_fecha = None
+                col_nombre = None
+                for col in df.columns:
+                    col_norm = col.upper()
+                    if col_norm == 'FECHA':
+                        col_fecha = col
+                    elif col_norm in ['NOMBRE', 'NOMBRE SUPERNUMERARIO', 'MEDICO']:
+                        col_nombre = col
+
+                if col_fecha and col_nombre:
+                    df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
+                    df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
+                    df['MES_NUM'] = df['FECHA_CLEAN'].dt.month
+                    all_dfs.append(df[['FECHA_CLEAN', 'NOMBRE_NORM', 'MES_NUM']].dropna(subset=['FECHA_CLEAN', 'NOMBRE_NORM']))
+
+            # 2. Buscar hojas por mes individual (SUPERNUMERARIOS {MES})
             for sheet in sheet_names:
                 sheet_upper = sheet.strip().upper()
-                # Buscar hojas con patrón "SUPERNUMERARIOS {MES}"
                 if not sheet_upper.startswith('SUPERNUMERARIOS '):
                     continue
                 mes_name = sheet_upper.replace('SUPERNUMERARIOS ', '').strip()
