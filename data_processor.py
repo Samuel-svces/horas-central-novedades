@@ -288,7 +288,49 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
         for _, row in df_worked.iterrows()
     }
     
-    medicos_meses = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).size()
+    # Determinar los meses permitidos según el filtro de Streamlit
+    allowed_months = None
+    try:
+        import streamlit as st
+        if 'mes_sel' in st.session_state and st.session_state.mes_sel:
+            inv_map = {v.upper(): k for k, v in MESES_MAP.items()}
+            allowed_months = [inv_map[m.upper()] for m in st.session_state.mes_sel if m.upper() in inv_map]
+    except Exception:
+        pass
+        
+    if allowed_months is None:
+        allowed_months = list(MESES_MAP.keys())
+
+    # Obtener médicos activos en el df filtrado
+    active_medicos = df[['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO']].drop_duplicates()
+    
+    active_combos = []
+    for _, m_row in active_medicos.iterrows():
+        cedula = m_row['CEDULA_FINAL']
+        nombre = m_row['NOMBRE SUPER VALIDADO']
+        doc_norm = normalize_name(nombre)
+        
+        meses_activos = set()
+        # 1. Meses de df_ref (histórico completo de novedades)
+        months_df = df_ref[df_ref['NOMBRE SUPER VALIDADO'] == nombre]['MES_NUM'].dropna().unique()
+        meses_activos.update(int(m) for m in months_df)
+        
+        # 2. Meses de df_super (programación)
+        if df_super is not None and not df_super.empty:
+            months_super = df_super[df_super['NOMBRE_NORM'] == doc_norm]['MES_NUM'].dropna().unique()
+            meses_activos.update(int(m) for m in months_super)
+            
+        # Filtrar por meses permitidos
+        for m_num in sorted(meses_activos):
+            if m_num in allowed_months:
+                active_combos.append({
+                    'CEDULA_FINAL': cedula,
+                    'NOMBRE SUPER VALIDADO': nombre,
+                    'MES': MESES_MAP.get(m_num, 'Sin Mes'),
+                    'MES_NUM': m_num
+                })
+                
+    medicos_meses = pd.DataFrame(active_combos)
     daily_rows = []
     
     for idx, row in medicos_meses.iterrows():
