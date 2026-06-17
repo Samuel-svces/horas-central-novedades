@@ -782,7 +782,6 @@ if not tabla_consolidada_vista.empty:
     tot_diferencia = tabla_consolidada_vista['TOTAL'].sum()
     tot_novedades = tabla_consolidada_vista['CANTIDAD_NOVEDADES'].sum()
     tot_medicos_activos = df_filtrado['NOMBRE SUPER VALIDADO'].nunique()
-    tot_medicos_jornada_completa = int(round(tot_horas_laboradas / 42.0))
     dif_badge_class = "badge-green" if tot_diferencia > 0 else ("badge-red" if tot_diferencia < 0 else "badge-yellow")
     dif_sign = "+" if tot_diferencia > 0 else ""
     st.markdown(
@@ -790,7 +789,6 @@ if not tabla_consolidada_vista.empty:
         f'<div class="totals-inline-item"><span class="totals-inline-label">MÉDICOS ACTIVOS:</span><span class="totals-inline-badge badge-blue">{tot_medicos_activos:,}</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">HORAS A LABORAR:</span><span class="totals-inline-badge badge-blue">{tot_horas_a_laborar:,.0f} hrs</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">HORAS LABORADAS:</span><span class="totals-inline-badge badge-green">{tot_horas_laboradas:,.0f} hrs</span></div>'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">MÉDICOS JORNADA COMPLETA:</span><span class="totals-inline-badge badge-green">{tot_medicos_jornada_completa:,}</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">DIFERENCIA:</span><span class="totals-inline-badge {dif_badge_class}">{dif_sign}{tot_diferencia:,.0f} hrs</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">NOVEDADES CUBIERTAS:</span><span class="totals-inline-badge badge-red">{tot_novedades:,}</span></div>'
         f'</div>',
