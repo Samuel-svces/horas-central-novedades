@@ -542,7 +542,7 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
         )
         grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
         grouped['SEMANA'] = grouped.apply(
-            lambda r: f"{r['SEMANA_INICIO'].strftime('%d/%m')} - {r['SEMANA_FIN'].strftime('%d/%m/%Y')}"
+            lambda r: f"{r['SEMANA_INICIO'].strftime('%d')} - {r['SEMANA_FIN'].strftime('%d')}"
             if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
             axis=1
         )
@@ -574,7 +574,7 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
     )
     grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
     grouped['SEMANA'] = grouped.apply(
-        lambda r: f"{r['SEMANA_INICIO'].strftime('%d/%m')} - {r['SEMANA_FIN'].strftime('%d/%m/%Y')}"
+        lambda r: f"{r['SEMANA_INICIO'].strftime('%d')} - {r['SEMANA_FIN'].strftime('%d')}"
         if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
         axis=1
     )
