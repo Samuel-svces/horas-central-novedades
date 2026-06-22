@@ -97,7 +97,7 @@ def cargar_desde_onedrive():
                     client_secret=config["client_secret"],
                     sharepoint_host=config["sharepoint_host"],
                     site_path=config["site_path"],
-                    file_server_relative_url=config["file_path"],
+                    file_drive_path=config["file_path"],
                 )
             else:
                 file_bytes = dp.download_excel_from_onedrive(

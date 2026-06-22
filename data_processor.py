@@ -104,16 +104,16 @@ def download_excel_from_sharepoint(
     client_secret: str,
     sharepoint_host: str,
     site_path: str,
-    file_server_relative_url: str
+    file_drive_path: str
 ) -> io.BytesIO:
     """
-    Descarga el archivo Excel desde SharePoint usando Microsoft Graph API,
-    resolviendo el archivo por la URL relativa del servidor (ruta dentro del sitio).
+    Descarga el archivo Excel desde SharePoint usando Microsoft Graph API.
 
-    Ejemplo:
-        sharepoint_host     = "sanvicenteces2.sharepoint.com"
-        site_path           = "/sites/CENTRALDENOVEDADESCONSOLIDADOS"
-        file_server_relative_url = "/sites/CENTRALDENOVEDADESCONSOLIDADOS/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    Parámetros en Streamlit Secrets:
+        SHAREPOINT_HOST      = "sanvicenteces2.sharepoint.com"
+        SHAREPOINT_SITE_PATH = "/sites/CENTRALDENOVEDADESCONSOLIDADOS"
+        SHAREPOINT_FILE_PATH = "/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+                               (ruta dentro de la biblioteca, sin prefijo de sitio ni de biblioteca)
 
     Retorna un BytesIO listo para pasarle a load_and_clean_data().
     """
@@ -130,7 +130,7 @@ def download_excel_from_sharepoint(
         )
     site_id = site_resp.json()["id"]
 
-    # 2. Obtener el drive raíz (Documents) del sitio
+    # 2. Obtener el drive raíz (Documentos compartidos) del sitio
     drives_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
     drives_resp = requests.get(drives_url, headers=headers, timeout=30)
     if drives_resp.status_code != 200:
@@ -140,14 +140,13 @@ def download_excel_from_sharepoint(
         )
     drives = drives_resp.json().get("value", [])
 
-    # Buscar el drive que corresponde a la biblioteca "Documentos compartidos" o "Documents"
+    # Buscar el drive "Documentos compartidos" / "Documents"; si no, usar el primero
     target_drive = None
     for d in drives:
         drive_name = d.get("name", "").upper()
         if drive_name in ("DOCUMENTOS COMPARTIDOS", "DOCUMENTS", "SHARED DOCUMENTS"):
             target_drive = d
             break
-    # Si no encontramos por nombre, tomar el primer drive disponible
     if target_drive is None and drives:
         target_drive = drives[0]
     if target_drive is None:
@@ -155,25 +154,9 @@ def download_excel_from_sharepoint(
 
     drive_id = target_drive["id"]
 
-    # 3. Construir la ruta relativa dentro del drive:
-    # Estrategia robusta: quitar el prefijo del sitio (site_path) del inicio de la URL,
-    # luego quitar el primer segmento (que es el nombre de la biblioteca).
-    # Ejemplo:
-    #   file_server_relative_url = "/sites/CENTRALDENOVEDADESCONSOLIDADOS/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
-    #   site_path                = "/sites/CENTRALDENOVEDADESCONSOLIDADOS"
-    #   Después de strip site_path → "/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
-    #   Después de quitar primer segmento → "CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
-    url_remainder = file_server_relative_url
-    if file_server_relative_url.lower().startswith(site_path.lower()):
-        url_remainder = file_server_relative_url[len(site_path):]
-    url_remainder = url_remainder.lstrip("/")
-
-    # Dividir por "/" y saltar el primer segmento (nombre de la biblioteca)
-    parts = url_remainder.split("/")
-    if len(parts) > 1:
-        path_in_drive = "/".join(parts[1:])
-    else:
-        path_in_drive = url_remainder
+    # 3. Usar directamente la ruta dentro del drive (sin prefijo de sitio ni de biblioteca)
+    # Ejemplo: "/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    path_in_drive = file_drive_path.lstrip("/")
 
     # 4. Descargar el archivo por su ruta dentro del drive
     import urllib.parse
@@ -188,6 +171,7 @@ def download_excel_from_sharepoint(
             f"Status: {response.status_code} — {response.text[:300]}"
         )
     return io.BytesIO(response.content)
+
 
 
 def download_excel_from_onedrive(
