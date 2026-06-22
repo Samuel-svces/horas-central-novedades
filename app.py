@@ -51,38 +51,62 @@ def get_onedrive_config():
     """
     Lee las credenciales desde st.secrets (Streamlit Cloud) o variables de entorno (local).
     Retorna None si no están configuradas → la app cae al modo local/manual.
+    Soporta dos modos:
+      - SharePoint por URL del sitio: usa SHAREPOINT_HOST + SHAREPOINT_SITE_PATH + SHAREPOINT_FILE_PATH
+      - OneDrive clásico: usa ONEDRIVE_DRIVE_ID + ONEDRIVE_FILE_ID
     """
     try:
-        return {
+        config = {
             "tenant_id":     st.secrets["AZURE_TENANT_ID"],
             "client_id":     st.secrets["AZURE_CLIENT_ID"],
             "client_secret": st.secrets["AZURE_CLIENT_SECRET"],
-            "drive_id":      st.secrets["ONEDRIVE_DRIVE_ID"],
-            "file_id":       st.secrets["ONEDRIVE_FILE_ID"],
         }
+        # Preferir método SharePoint por URL de sitio
+        if "SHAREPOINT_HOST" in st.secrets:
+            config["mode"] = "sharepoint"
+            config["sharepoint_host"] = st.secrets["SHAREPOINT_HOST"]
+            config["site_path"]        = st.secrets["SHAREPOINT_SITE_PATH"]
+            config["file_path"]        = st.secrets["SHAREPOINT_FILE_PATH"]
+        else:
+            # Fallback al método clásico con drive_id y file_id
+            config["mode"]     = "onedrive"
+            config["drive_id"] = st.secrets["ONEDRIVE_DRIVE_ID"]
+            config["file_id"]  = st.secrets["ONEDRIVE_FILE_ID"]
+        return config
     except Exception:
         return None
 
 
 def cargar_desde_onedrive():
-    """Descarga el Excel desde OneDrive y lo guarda en session_state."""
+    """Descarga el Excel desde SharePoint/OneDrive y lo guarda en session_state."""
     config = get_onedrive_config()
     if not config:
         st.session_state.load_error = (
-            "No se encontraron credenciales de OneDrive. "
+            "No se encontraron credenciales de SharePoint/OneDrive. "
             "Configura los Secrets en Streamlit Cloud o usa el modo manual."
         )
         return
 
     try:
-        with st.spinner("Conectando con OneDrive..."):
-            file_bytes = dp.download_excel_from_onedrive(
-                tenant_id=config["tenant_id"],
-                client_id=config["client_id"],
-                client_secret=config["client_secret"],
-                drive_id=config["drive_id"],
-                file_id=config["file_id"],
-            )
+        spinner_msg = "Conectando con SharePoint..." if config.get("mode") == "sharepoint" else "Conectando con OneDrive..."
+        with st.spinner(spinner_msg):
+            if config.get("mode") == "sharepoint":
+                file_bytes = dp.download_excel_from_sharepoint(
+                    tenant_id=config["tenant_id"],
+                    client_id=config["client_id"],
+                    client_secret=config["client_secret"],
+                    sharepoint_host=config["sharepoint_host"],
+                    site_path=config["site_path"],
+                    file_server_relative_url=config["file_path"],
+                )
+            else:
+                file_bytes = dp.download_excel_from_onedrive(
+                    tenant_id=config["tenant_id"],
+                    client_id=config["client_id"],
+                    client_secret=config["client_secret"],
+                    drive_id=config["drive_id"],
+                    file_id=config["file_id"],
+                )
             st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
             file_bytes.seek(0)
             st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
@@ -475,7 +499,7 @@ defaults = {
     'cedula_sel_draft': "Todas",
     'nombre_sel_draft': "Todos",
     'agrupacion_sel_draft': "Por Mes",
-    'file_path_input': r"C:\Users\JuanJoseOsorioMolina\OneDrive - U.T SAN VICENTE CES\CONSOLIDADO 2026.xlsx",
+    'file_path_input': r"C:\Users\JuanJoseOsorioMolina\OneDrive - U.T SAN VICENTE CES\CONSOLIDADOS\CONSOLIDADO 2026\CONSOLIDADO 2026.xlsx",
     'uploaded_file_name': None,
     'df_raw': None,
     'df_super': None,
@@ -521,7 +545,7 @@ with col_config:
 
         # Botón para recargar desde OneDrive (siempre visible)
         if get_onedrive_config():
-            if st.button("🔄 Recargar desde OneDrive", use_container_width=True):
+            if st.button("🔄 Recargar desde SharePoint", use_container_width=True):
                 st.session_state.df_raw = None
                 st.session_state.load_error = None
                 cargar_desde_onedrive()
