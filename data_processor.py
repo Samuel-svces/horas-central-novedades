@@ -98,6 +98,100 @@ def get_access_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     return result["access_token"]
 
 
+def download_excel_from_sharepoint(
+    tenant_id: str,
+    client_id: str,
+    client_secret: str,
+    sharepoint_host: str,
+    site_path: str,
+    file_server_relative_url: str
+) -> io.BytesIO:
+    """
+    Descarga el archivo Excel desde SharePoint usando Microsoft Graph API,
+    resolviendo el archivo por la URL relativa del servidor (ruta dentro del sitio).
+
+    Ejemplo:
+        sharepoint_host     = "sanvicenteces2.sharepoint.com"
+        site_path           = "/sites/CENTRALDENOVEDADESCONSOLIDADOS"
+        file_server_relative_url = "/sites/CENTRALDENOVEDADESCONSOLIDADOS/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+
+    Retorna un BytesIO listo para pasarle a load_and_clean_data().
+    """
+    token = get_access_token(tenant_id, client_id, client_secret)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Obtener el ID del sitio de SharePoint
+    site_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_host}:{site_path}"
+    site_resp = requests.get(site_url, headers=headers, timeout=30)
+    if site_resp.status_code != 200:
+        raise ValueError(
+            f"No se pudo obtener el sitio de SharePoint. "
+            f"Status: {site_resp.status_code} — {site_resp.text[:300]}"
+        )
+    site_id = site_resp.json()["id"]
+
+    # 2. Obtener el drive raíz (Documents) del sitio
+    drives_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
+    drives_resp = requests.get(drives_url, headers=headers, timeout=30)
+    if drives_resp.status_code != 200:
+        raise ValueError(
+            f"No se pudo listar las bibliotecas del sitio. "
+            f"Status: {drives_resp.status_code} — {drives_resp.text[:300]}"
+        )
+    drives = drives_resp.json().get("value", [])
+
+    # Buscar el drive que corresponde a la biblioteca "Documentos compartidos" o "Documents"
+    target_drive = None
+    for d in drives:
+        drive_name = d.get("name", "").upper()
+        if drive_name in ("DOCUMENTOS COMPARTIDOS", "DOCUMENTS", "SHARED DOCUMENTS"):
+            target_drive = d
+            break
+    # Si no encontramos por nombre, tomar el primer drive disponible
+    if target_drive is None and drives:
+        target_drive = drives[0]
+    if target_drive is None:
+        raise ValueError("No se encontró ninguna biblioteca de documentos en el sitio de SharePoint.")
+
+    drive_id = target_drive["id"]
+
+    # 3. Construir la ruta relativa dentro del drive (eliminar el prefijo del sitio y de la biblioteca)
+    # file_server_relative_url ejemplo:
+    # "/sites/CENTRALDENOVEDADESCONSOLIDADOS/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    # → ruta dentro del drive: "CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    lib_name_lower = target_drive.get("name", "Documentos compartidos")
+    # Encontrar el inicio de la ruta después del nombre de la biblioteca
+    srv_url_lower = file_server_relative_url.lower()
+    lib_idx = srv_url_lower.find(lib_name_lower.lower())
+    if lib_idx == -1:
+        # Intentar con "documents" o "shared documents" como fallback
+        for fallback in ["documents", "shared documents", "documentos compartidos"]:
+            lib_idx = srv_url_lower.find(fallback)
+            if lib_idx != -1:
+                lib_name_lower = file_server_relative_url[lib_idx:lib_idx + len(fallback)]
+                break
+
+    if lib_idx != -1:
+        path_in_drive = file_server_relative_url[lib_idx + len(lib_name_lower):].lstrip("/")
+    else:
+        # Si no se puede determinar la ruta relativa, usar la ruta completa
+        path_in_drive = file_server_relative_url.lstrip("/")
+
+    # 4. Descargar el archivo por su ruta dentro del drive
+    import urllib.parse
+    encoded_path = urllib.parse.quote(path_in_drive)
+    content_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}:/content"
+    response = requests.get(content_url, headers=headers, timeout=60)
+
+    if response.status_code != 200:
+        raise ValueError(
+            f"Error al descargar el archivo desde SharePoint. "
+            f"Ruta buscada: '{path_in_drive}' — "
+            f"Status: {response.status_code} — {response.text[:300]}"
+        )
+    return io.BytesIO(response.content)
+
+
 def download_excel_from_onedrive(
     tenant_id: str,
     client_id: str,
@@ -106,15 +200,16 @@ def download_excel_from_onedrive(
     file_id: str
 ) -> io.BytesIO:
     """
-    Descarga el archivo Excel desde OneDrive/SharePoint usando Microsoft Graph API.
+    Descarga el archivo Excel desde OneDrive/SharePoint usando Microsoft Graph API
+    mediante drive_id y file_id (método clásico).
     Retorna un BytesIO listo para pasarle a load_and_clean_data().
     """
     token = get_access_token(tenant_id, client_id, client_secret)
     url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{file_id}/content"
     headers = {"Authorization": f"Bearer {token}"}
-    
-    response = requests.get(url, headers=headers, timeout=30)
-    
+
+    response = requests.get(url, headers=headers, timeout=60)
+
     if response.status_code != 200:
         raise ValueError(
             f"Error al descargar el archivo desde OneDrive. "
