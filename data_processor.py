@@ -155,27 +155,25 @@ def download_excel_from_sharepoint(
 
     drive_id = target_drive["id"]
 
-    # 3. Construir la ruta relativa dentro del drive (eliminar el prefijo del sitio y de la biblioteca)
-    # file_server_relative_url ejemplo:
-    # "/sites/CENTRALDENOVEDADESCONSOLIDADOS/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
-    # → ruta dentro del drive: "CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
-    lib_name_lower = target_drive.get("name", "Documentos compartidos")
-    # Encontrar el inicio de la ruta después del nombre de la biblioteca
-    srv_url_lower = file_server_relative_url.lower()
-    lib_idx = srv_url_lower.find(lib_name_lower.lower())
-    if lib_idx == -1:
-        # Intentar con "documents" o "shared documents" como fallback
-        for fallback in ["documents", "shared documents", "documentos compartidos"]:
-            lib_idx = srv_url_lower.find(fallback)
-            if lib_idx != -1:
-                lib_name_lower = file_server_relative_url[lib_idx:lib_idx + len(fallback)]
-                break
+    # 3. Construir la ruta relativa dentro del drive:
+    # Estrategia robusta: quitar el prefijo del sitio (site_path) del inicio de la URL,
+    # luego quitar el primer segmento (que es el nombre de la biblioteca).
+    # Ejemplo:
+    #   file_server_relative_url = "/sites/CENTRALDENOVEDADESCONSOLIDADOS/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    #   site_path                = "/sites/CENTRALDENOVEDADESCONSOLIDADOS"
+    #   Después de strip site_path → "/Documentos compartidos/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    #   Después de quitar primer segmento → "CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
+    url_remainder = file_server_relative_url
+    if file_server_relative_url.lower().startswith(site_path.lower()):
+        url_remainder = file_server_relative_url[len(site_path):]
+    url_remainder = url_remainder.lstrip("/")
 
-    if lib_idx != -1:
-        path_in_drive = file_server_relative_url[lib_idx + len(lib_name_lower):].lstrip("/")
+    # Dividir por "/" y saltar el primer segmento (nombre de la biblioteca)
+    parts = url_remainder.split("/")
+    if len(parts) > 1:
+        path_in_drive = "/".join(parts[1:])
     else:
-        # Si no se puede determinar la ruta relativa, usar la ruta completa
-        path_in_drive = file_server_relative_url.lstrip("/")
+        path_in_drive = url_remainder
 
     # 4. Descargar el archivo por su ruta dentro del drive
     import urllib.parse
