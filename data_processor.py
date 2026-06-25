@@ -537,8 +537,9 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                 
     df_res = pd.DataFrame(daily_rows)
     if not df_res.empty:
-        # Filtrar días no laborados que no tienen horas a laborar (ej. domingos y festivos sin novedades)
-        df_res = df_res[~((df_res['HORAS_TOTALES'] == 0) & (df_res['HORAS_A_LABORAR'] == 0))]
+        # Filtrar días no laborados que no tienen horas a laborar (ej. domingos y festivos sin novedades),
+        # pero conservar aquellos que son de "Descanso" (sábados no laborados).
+        df_res = df_res[~((df_res['HORAS_TOTALES'] == 0) & (df_res['HORAS_A_LABORAR'] == 0) & (df_res['ESTADO'] != 'Descanso'))]
     return df_res
 
 
