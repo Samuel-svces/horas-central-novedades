@@ -274,6 +274,38 @@ def load_and_clean_data(file_source):
             f"Columnas encontradas: {df.columns.tolist()}"
         )
 
+    # Auto-completar NOMBRE SUPER VALIDADO usando la columna MEDICOS si coincide con un supernumerario conocido
+    if col_name in df.columns and 'MEDICOS' in df.columns:
+        known_supers = set(df[col_name].dropna().astype(str).str.strip().str.upper().unique())
+        try:
+            if hasattr(safe_source, 'seek'):
+                safe_source.seek(0)
+            if not isinstance(safe_source, str) or not safe_source.endswith(('.csv', '.CSV')):
+                super_df = pd.read_excel(safe_source, sheet_name='SUPERNUMERARIOS')
+                super_df.columns = [str(c).strip().upper() for c in super_df.columns]
+                if 'NOMBRE' in super_df.columns:
+                    known_supers.update(super_df['NOMBRE'].dropna().astype(str).str.strip().str.upper().unique())
+        except Exception:
+            pass
+        
+        known_supers = {n for n in known_supers if n and n.strip() != '' and n.upper() != 'NAN'}
+        known_supers_norm = set(normalize_name(n) for n in known_supers)
+        
+        def fill_missing_super_validated(row):
+            val_super = row.get(col_name)
+            if pd.isna(val_super) or str(val_super).strip() == '' or str(val_super).strip().upper() == 'NAN':
+                val_medicos = row.get('MEDICOS')
+                if pd.notna(val_medicos) and str(val_medicos).strip() != '' and str(val_medicos).strip().upper() != 'NAN':
+                    medicos_norm = normalize_name(val_medicos)
+                    if medicos_norm in known_supers_norm:
+                        for name in known_supers:
+                            if normalize_name(name) == medicos_norm:
+                                return name
+                        return str(val_medicos).strip().upper()
+            return val_super
+
+        df[col_name] = df.apply(fill_missing_super_validated, axis=1)
+
     # 4. Filtrar y limpiar registros vacíos o no válidos de Médicos
     df = df[df[col_name].notnull()]
     df[col_name] = df[col_name].astype(str).str.strip()
