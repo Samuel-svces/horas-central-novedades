@@ -263,10 +263,11 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
         'FECHA_STR': 'Fecha', 'CEDULA_FINAL': 'Cédula',
         'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'HORAS_A_LABORAR': 'Horas a laborar', 'HORAS_TOTALES': 'Horas Laboradas',
-        'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
+        'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
+        'ESTADO': 'Estado'
     })
     df_export_dia_rename = df_export_dia_rename[
-        ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+        ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas', 'Estado']
     ]
     if not df_export_dia_rename.empty:
         totales = {c: [df_export_dia_rename[c].sum()] if c in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
@@ -832,9 +833,10 @@ if agrupacion_vista == "Por Día":
         'FECHA_STR': 'Fecha', 'CEDULA_FINAL': 'Cédula',
         'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'HORAS_A_LABORAR': 'Horas a laborar', 'HORAS_TOTALES': 'Horas Laboradas',
-        'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
+        'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
+        'ESTADO': 'Estado'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas', 'Estado']
 elif agrupacion_vista == "Por Semana":
     tabla_display = tabla_consolidada_vista.rename(columns={
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',

@@ -512,6 +512,15 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                     else:
                         horas_a_laborar = val
                         
+                    # Si es sábado (dayofweek == 5) y no registró horas trabajadas (0.0),
+                    # se considera que no trabajó ese sábado, por lo que su meta de horas a laborar es 0.0
+                    # y el estado se establece como "No trabajó".
+                    if curr.dayofweek == 5 and horas_trabajadas == 0.0:
+                        horas_a_laborar = 0.0
+                        estado = "No trabajó"
+                    else:
+                        estado = ""
+                        
                     daily_rows.append({
                         'FECHA_CLEAN': curr,
                         'FECHA_STR': date_str,
@@ -521,7 +530,8 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                         'CANTIDAD_NOVEDADES': novedades,
                         'MES': month_name,
                         'MES_NUM': month_num,
-                        'HORAS_A_LABORAR': horas_a_laborar
+                        'HORAS_A_LABORAR': horas_a_laborar,
+                        'ESTADO': estado
                     })
                 curr += pd.Timedelta(days=1)
                 
@@ -569,10 +579,10 @@ def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None,
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
-                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR'
+                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR', 'ESTADO'
             ])
         df_daily = df_daily.sort_values(by=['FECHA_CLEAN', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]).reset_index(drop=True)
-        return df_daily[['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR']]
+        return df_daily[['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR', 'ESTADO']]
 
     df_copy = df.copy()
     df_copy['FECHA_STR'] = df_copy['FECHA_CLEAN'].dt.strftime('%Y-%m-%d')
@@ -581,6 +591,7 @@ def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None,
         HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
         CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
     )
+    grouped['ESTADO'] = ""
     grouped = grouped.sort_values(by=['FECHA_STR', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]).reset_index(drop=True)
     temp_date = pd.to_datetime(grouped['FECHA_STR'], format='%Y-%m-%d', errors='coerce')
     grouped['FECHA_STR'] = temp_date.dt.strftime('%d/%m/%Y').fillna(grouped['FECHA_STR'])
