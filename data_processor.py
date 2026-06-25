@@ -513,10 +513,9 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                         horas_a_laborar = val
                         
                     # Si es sábado (dayofweek == 5) y no registró horas trabajadas (0.0),
-                    # se considera que es su descanso, por lo que su meta de horas a laborar es 0.0
+                    # se considera que es su descanso. Su meta de horas a laborar se mantiene en 7 (o 7.33)
                     # y el estado se establece como "Descanso".
                     if curr.dayofweek == 5 and horas_trabajadas == 0.0:
-                        horas_a_laborar = 0.0
                         estado = "Descanso"
                     else:
                         estado = ""
