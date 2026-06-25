@@ -97,7 +97,7 @@ def cargar_desde_onedrive():
                     client_secret=config["client_secret"],
                     sharepoint_host=config["sharepoint_host"],
                     site_path=config["site_path"],
-                    file_server_relative_url=config["file_path"],
+                    file_drive_path=config["file_path"],
                 )
             else:
                 file_bytes = dp.download_excel_from_onedrive(
@@ -365,11 +365,17 @@ st.set_page_config(
 custom_css = r"""
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+    
     html, body, [class*="st-"], [class*="stWidget"], [class*="stSelectbox"], [class*="stMultiSelect"],
-    [class*="stMarkdown"], label, p, h1, h2, h3, h4, h5, h6, [data-baseweb="select"] *,
+    [class*="stMarkdown"], label, p, [data-baseweb="select"] *,
     div[role="listbox"] *, button, .stButton button, [data-testid="stSidebar"] * {
-        font-family: 'Inter', sans-serif; color: #202124 !important;
+        font-family: 'Plus Jakarta Sans', sans-serif; color: #202124 !important;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 700 !important;
     }
     .block-container { padding-top: 1rem !important; padding-bottom: 1rem !important; }
     [data-testid="stHeader"] { display: none !important; }
@@ -537,7 +543,7 @@ col_config, col_title, col_logo = st.columns([0.6, 6.4, 3.0], vertical_alignment
 
 with col_config:
     with st.popover("", help="Configuración de Origen de Datos"):
-        st.markdown("<h3 style='margin:0 0 10px 0; font-family:Inter,sans-serif; color:#0b3c5d;'>⚙️ Configuración de Datos</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='margin:0 0 10px 0; font-family:Outfit,sans-serif; font-weight:700; color:#0b3c5d;'>⚙️ Configuración de Datos</h3>", unsafe_allow_html=True)
 
         # Mostrar última actualización si existe
         if st.session_state.last_refresh:
@@ -601,7 +607,7 @@ with col_config:
 
 with col_title:
     st.markdown(
-        "<h1 style='font-family:\"Segoe UI\",sans-serif; font-weight:400; color:#0b3c5d; "
+        "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#0b3c5d; "
         "font-size:38px; margin:0;'>Control de horas Central de novedades</h1>",
         unsafe_allow_html=True
     )
