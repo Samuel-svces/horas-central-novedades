@@ -67,6 +67,8 @@ def get_onedrive_config():
             config["sharepoint_host"] = st.secrets["SHAREPOINT_HOST"]
             config["site_path"]        = st.secrets["SHAREPOINT_SITE_PATH"]
             config["file_path"]        = st.secrets["SHAREPOINT_FILE_PATH"]
+            if "SHAREPOINT_FILE_PATH_HISTORIC" in st.secrets:
+                config["file_path_historic"] = st.secrets["SHAREPOINT_FILE_PATH_HISTORIC"]
         else:
             # Fallback al método clásico con drive_id y file_id
             config["mode"]     = "onedrive"
@@ -91,7 +93,7 @@ def cargar_desde_onedrive():
         spinner_msg = "Conectando con SharePoint..." if config.get("mode") == "sharepoint" else "Conectando con OneDrive..."
         with st.spinner(spinner_msg):
             if config.get("mode") == "sharepoint":
-                file_bytes = dp.download_excel_from_sharepoint(
+                file_bytes_actual = dp.download_excel_from_sharepoint(
                     tenant_id=config["tenant_id"],
                     client_id=config["client_id"],
                     client_secret=config["client_secret"],
@@ -99,17 +101,55 @@ def cargar_desde_onedrive():
                     site_path=config["site_path"],
                     file_drive_path=config["file_path"],
                 )
-            else:
-                file_bytes = dp.download_excel_from_onedrive(
-                    tenant_id=config["tenant_id"],
-                    client_id=config["client_id"],
-                    client_secret=config["client_secret"],
-                    drive_id=config["drive_id"],
-                    file_id=config["file_id"],
-                )
-            st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
+                df_raw_actual = dp.load_and_clean_data(file_bytes_actual)
+                
+                df_raw_historico = None
+                if "file_path_historic" in config:
+                    try:
+                        file_bytes_hist = dp.download_excel_from_sharepoint(
+                            tenant_id=config["tenant_id"],
+                            client_id=config["client_id"],
+                            client_secret=config["client_secret"],
+                            sharepoint_host=config["sharepoint_host"],
+                            site_path=config["site_path"],
+                            file_drive_path=config["file_path_historic"],
+                        )
+                        df_raw_historico = dp.load_and_clean_data(file_bytes_hist)
+                    except Exception as e:
+                        st.warning(f"Error cargando archivo historico: {e}")
+                
+                if df_raw_historico is not None and not df_raw_historico.empty:
+                    # De enero a mayo (MES_NUM <= 5) se lee del historico
+                    df_raw_historico = df_raw_historico[df_raw_historico['MES_NUM'] <= 5]
+                    # De junio en adelante (MES_NUM >= 6) se lee del actual
+                    df_raw_actual = df_raw_actual[df_raw_actual['MES_NUM'] >= 6]
+                    
+                    st.session_state.df_raw = __import__('pandas').concat([df_raw_historico, df_raw_actual], ignore_index=True)
+                    st.session_state.hist_loaded = True
+                else:
+                    st.session_state.df_raw = df_raw_actual
+                    st.session_state.hist_loaded = False
+                    
+                file_bytes = file_bytes_actual  # para continuar cargando metadatos (supernumerarios, metas) del actual
             file_bytes.seek(0)
-            st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
+            df_super_actual = dp.load_supernumerario_sheets(file_bytes)
+            
+            df_super_hist = None
+            if df_raw_historico is not None:
+                try:
+                    file_bytes_hist.seek(0)
+                    df_super_hist = dp.load_supernumerario_sheets(file_bytes_hist)
+                except Exception as e:
+                    st.warning(f"Error cargando supernumerarios historico: {e}")
+                    
+            if df_super_hist is not None and not df_super_hist.empty:
+                if df_super_actual is not None and not df_super_actual.empty:
+                    st.session_state.df_super = __import__('pandas').concat([df_super_hist, df_super_actual], ignore_index=True).drop_duplicates()
+                else:
+                    st.session_state.df_super = df_super_hist
+            else:
+                st.session_state.df_super = df_super_actual
+                
             file_bytes.seek(0)
             st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_bytes)
             file_bytes.seek(0)
@@ -545,6 +585,12 @@ col_config, col_title, col_logo = st.columns([0.6, 6.4, 3.0], vertical_alignment
 with col_config:
     with st.popover("", help="Configuración de Origen de Datos"):
         st.markdown("<h3 style='margin:0 0 10px 0; font-family:Outfit,sans-serif; font-weight:700; color:#0b3c5d;'>⚙️ Configuración de Datos</h3>", unsafe_allow_html=True)
+
+        if 'hist_loaded' in st.session_state:
+            if st.session_state.hist_loaded:
+                st.sidebar.success("✅ Archivo Histórico Cargado")
+            else:
+                st.sidebar.error("❌ Archivo Histórico NO Cargado")
 
         # Mostrar última actualización si existe
         if st.session_state.last_refresh:
