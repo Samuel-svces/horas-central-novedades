@@ -274,8 +274,8 @@ def load_and_clean_data(file_source):
             f"Columnas encontradas: {df.columns.tolist()}"
         )
 
-    # Auto-completar NOMBRE SUPER VALIDADO usando la columna MEDICOS si coincide con un supernumerario conocido
-    if col_name in df.columns and 'MEDICOS' in df.columns:
+    # Auto-completar NOMBRE SUPER VALIDADO
+    if col_name in df.columns:
         known_supers = set(df[col_name].dropna().astype(str).str.strip().str.upper().unique())
         try:
             if hasattr(safe_source, 'seek'):
@@ -291,20 +291,37 @@ def load_and_clean_data(file_source):
         known_supers = {n for n in known_supers if n and n.strip() != '' and n.upper() != 'NAN'}
         known_supers_norm = set(normalize_name(n) for n in known_supers)
         
-        def fill_missing_super_validated(row):
-            val_super = row.get(col_name)
-            if pd.isna(val_super) or str(val_super).strip() == '' or str(val_super).strip().upper() == 'NAN':
-                val_medicos = row.get('MEDICOS')
-                if pd.notna(val_medicos) and str(val_medicos).strip() != '' and str(val_medicos).strip().upper() != 'NAN':
-                    medicos_norm = normalize_name(val_medicos)
-                    if medicos_norm in known_supers_norm:
-                        for name in known_supers:
-                            if normalize_name(name) == medicos_norm:
-                                return name
-                        return str(val_medicos).strip().upper()
-            return val_super
+        # 1. Preferir la columna SUPERNUMERARIOS (el médico supernumerario que cubre la novedad)
+        if 'SUPERNUMERARIOS' in df.columns:
+            def fill_missing_from_supernumerarios(row):
+                val_super_val = row.get(col_name)
+                if pd.isna(val_super_val) or str(val_super_val).strip() == '' or str(val_super_val).strip().upper() == 'NAN':
+                    val_super = row.get('SUPERNUMERARIOS')
+                    if pd.notna(val_super) and str(val_super).strip() != '' and str(val_super).strip().upper() != 'NAN':
+                        super_norm = normalize_name(val_super)
+                        if super_norm in known_supers_norm:
+                            for name in known_supers:
+                                if normalize_name(name) == super_norm:
+                                    return name
+                            return str(val_super).strip().upper()
+                return val_super_val
+            df[col_name] = df.apply(fill_missing_from_supernumerarios, axis=1)
 
-        df[col_name] = df.apply(fill_missing_super_validated, axis=1)
+        # 2. Como fallback, usar la columna MEDICOS (para novedades propias del supernumerario, ej. incapacidades)
+        if 'MEDICOS' in df.columns:
+            def fill_missing_super_validated(row):
+                val_super = row.get(col_name)
+                if pd.isna(val_super) or str(val_super).strip() == '' or str(val_super).strip().upper() == 'NAN':
+                    val_medicos = row.get('MEDICOS')
+                    if pd.notna(val_medicos) and str(val_medicos).strip() != '' and str(val_medicos).strip().upper() != 'NAN':
+                        medicos_norm = normalize_name(val_medicos)
+                        if medicos_norm in known_supers_norm:
+                            for name in known_supers:
+                                if normalize_name(name) == medicos_norm:
+                                        return name
+                            return str(val_medicos).strip().upper()
+                return val_super
+            df[col_name] = df.apply(fill_missing_super_validated, axis=1)
 
     # 4. Filtrar y limpiar registros vacíos o no válidos de Médicos
     df = df[df[col_name].notnull()]
@@ -783,10 +800,9 @@ def load_supernumerario_sheets(file_source):
 
             all_dfs = []
 
-            # 1. Buscar si existe una hoja única consolidada llamada "SUPERNUMERARIOS"
-            super_single_sheets = [s for s in sheet_names if s.strip().upper() == 'SUPERNUMERARIOS']
-            if super_single_sheets:
-                sheet = super_single_sheets[0]
+            # 1. Buscar si existe una hoja única consolidada llamada "SUPERNUMERARIOS" o "SUPERNUMERARIO_2026_HISTORICO"
+            super_single_sheets = [s for s in sheet_names if s.strip().upper() in ['SUPERNUMERARIOS', 'SUPERNUMERARIO_2026_HISTORICO']]
+            for sheet in super_single_sheets:
                 df = pd.read_excel(xl, sheet_name=sheet)
                 df.columns = [str(col).strip() for col in df.columns]
 
