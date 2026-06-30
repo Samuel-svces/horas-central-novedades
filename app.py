@@ -151,7 +151,23 @@ def cargar_desde_onedrive():
                 st.session_state.df_super = df_super_actual
                 
             file_bytes.seek(0)
-            st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_bytes)
+            plaza_actual = dp.load_plaza_fija_dates(file_bytes)
+            
+            plaza_hist = {}
+            if df_raw_historico is not None:
+                try:
+                    file_bytes_hist.seek(0)
+                    plaza_hist = dp.load_plaza_fija_dates(file_bytes_hist)
+                except Exception as e:
+                    st.warning(f"Error cargando plaza fija historico: {e}")
+                    
+            # Combinar diccionarios (el actual sobreescribe al historico en caso de repetidos)
+            if plaza_hist:
+                plaza_hist.update(plaza_actual)
+                st.session_state.plaza_fija_dates = plaza_hist
+            else:
+                st.session_state.plaza_fija_dates = plaza_actual
+                
             file_bytes.seek(0)
             m_targets, d_targets = dp.load_calendar_targets(file_bytes)
             st.session_state.monthly_targets = m_targets
