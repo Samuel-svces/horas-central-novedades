@@ -101,9 +101,11 @@ def cargar_desde_onedrive():
                     site_path=config["site_path"],
                     file_drive_path=config["file_path"],
                 )
-                df_raw_actual = dp.load_and_clean_data(file_bytes_actual)
+                xl_actual = pd.ExcelFile(file_bytes_actual, engine='calamine')
+                df_raw_actual = dp.load_and_clean_data(xl_actual)
                 
                 df_raw_historico = None
+                xl_hist = None
                 if "file_path_historic" in config:
                     try:
                         file_bytes_hist = dp.download_excel_from_sharepoint(
@@ -114,7 +116,8 @@ def cargar_desde_onedrive():
                             site_path=config["site_path"],
                             file_drive_path=config["file_path_historic"],
                         )
-                        df_raw_historico = dp.load_and_clean_data(file_bytes_hist)
+                        xl_hist = pd.ExcelFile(file_bytes_hist, engine='calamine')
+                        df_raw_historico = dp.load_and_clean_data(xl_hist)
                     except Exception as e:
                         st.warning(f"Error cargando archivo historico: {e}")
                 
@@ -130,15 +133,17 @@ def cargar_desde_onedrive():
                     st.session_state.df_raw = df_raw_actual
                     st.session_state.hist_loaded = False
                     
-                file_bytes = file_bytes_actual  # para continuar cargando metadatos (supernumerarios, metas) del actual
-            file_bytes.seek(0)
-            df_super_actual = dp.load_supernumerario_sheets(file_bytes)
+                file_source_for_meta = xl_actual
+                xl_hist_for_meta = xl_hist
+            else:
+                raise ValueError("Modo OneDrive clásico no está implementado. Usa el modo SharePoint.")
+                
+            df_super_actual = dp.load_supernumerario_sheets(file_source_for_meta)
             
             df_super_hist = None
-            if df_raw_historico is not None:
+            if df_raw_historico is not None and xl_hist_for_meta is not None:
                 try:
-                    file_bytes_hist.seek(0)
-                    df_super_hist = dp.load_supernumerario_sheets(file_bytes_hist)
+                    df_super_hist = dp.load_supernumerario_sheets(xl_hist_for_meta)
                 except Exception as e:
                     st.warning(f"Error cargando supernumerarios historico: {e}")
                     
@@ -150,14 +155,12 @@ def cargar_desde_onedrive():
             else:
                 st.session_state.df_super = df_super_actual
                 
-            file_bytes.seek(0)
-            plaza_actual = dp.load_plaza_fija_dates(file_bytes)
+            plaza_actual = dp.load_plaza_fija_dates(file_source_for_meta)
             
             plaza_hist = {}
-            if df_raw_historico is not None:
+            if df_raw_historico is not None and xl_hist_for_meta is not None:
                 try:
-                    file_bytes_hist.seek(0)
-                    plaza_hist = dp.load_plaza_fija_dates(file_bytes_hist)
+                    plaza_hist = dp.load_plaza_fija_dates(xl_hist_for_meta)
                 except Exception as e:
                     st.warning(f"Error cargando plaza fija historico: {e}")
                     
@@ -168,8 +171,7 @@ def cargar_desde_onedrive():
             else:
                 st.session_state.plaza_fija_dates = plaza_actual
                 
-            file_bytes.seek(0)
-            m_targets, d_targets = dp.load_calendar_targets(file_bytes)
+            m_targets, d_targets = dp.load_calendar_targets(file_source_for_meta)
             st.session_state.monthly_targets = m_targets
             st.session_state.daily_targets = d_targets
             st.session_state.load_error = None
@@ -636,14 +638,19 @@ with col_config:
             if st.button("🔄 Cargar desde ruta local", use_container_width=True):
                 if os.path.exists(file_path):
                     try:
-                        st.session_state.df_raw = dp.load_and_clean_data(file_path)
-                        st.session_state.df_super = dp.load_supernumerario_sheets(file_path)
-                        st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_path)
-                        m, d = dp.load_calendar_targets(file_path)
-                        st.session_state.monthly_targets = m
-                        st.session_state.daily_targets = d
-                        st.session_state.load_error = None
-                        st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
+                        safe_path, cleanup = dp.get_safe_file_source(file_path)
+                        try:
+                            xl = pd.ExcelFile(safe_path, engine='calamine')
+                            st.session_state.df_raw = dp.load_and_clean_data(xl)
+                            st.session_state.df_super = dp.load_supernumerario_sheets(xl)
+                            st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
+                            m, d = dp.load_calendar_targets(xl)
+                            st.session_state.monthly_targets = m
+                            st.session_state.daily_targets = d
+                            st.session_state.load_error = None
+                            st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
+                        finally:
+                            cleanup()
                         st.rerun()
                     except Exception as e:
                         st.session_state.load_error = str(e)
@@ -652,13 +659,11 @@ with col_config:
             if uploaded_file is not None:
                 try:
                     file_bytes = io.BytesIO(uploaded_file.read())
-                    st.session_state.df_raw = dp.load_and_clean_data(file_bytes)
-                    file_bytes.seek(0)
-                    st.session_state.df_super = dp.load_supernumerario_sheets(file_bytes)
-                    file_bytes.seek(0)
-                    st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_bytes)
-                    file_bytes.seek(0)
-                    m, d = dp.load_calendar_targets(file_bytes)
+                    xl = pd.ExcelFile(file_bytes, engine='calamine')
+                    st.session_state.df_raw = dp.load_and_clean_data(xl)
+                    st.session_state.df_super = dp.load_supernumerario_sheets(xl)
+                    st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
+                    m, d = dp.load_calendar_targets(xl)
                     st.session_state.monthly_targets = m
                     st.session_state.daily_targets = d
                     st.session_state.load_error = None
@@ -694,13 +699,18 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
         file_path = st.session_state.file_path_input
         if os.path.exists(file_path):
             try:
-                st.session_state.df_raw = dp.load_and_clean_data(file_path)
-                st.session_state.df_super = dp.load_supernumerario_sheets(file_path)
-                st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(file_path)
-                m, d = dp.load_calendar_targets(file_path)
-                st.session_state.monthly_targets = m
-                st.session_state.daily_targets = d
-                st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
+                safe_path, cleanup = dp.get_safe_file_source(file_path)
+                try:
+                    xl = pd.ExcelFile(safe_path, engine='calamine')
+                    st.session_state.df_raw = dp.load_and_clean_data(xl)
+                    st.session_state.df_super = dp.load_supernumerario_sheets(xl)
+                    st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
+                    m, d = dp.load_calendar_targets(xl)
+                    st.session_state.monthly_targets = m
+                    st.session_state.daily_targets = d
+                    st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
+                finally:
+                    cleanup()
             except Exception as e:
                 st.session_state.load_error = str(e)
         else:
