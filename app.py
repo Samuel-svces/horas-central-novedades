@@ -593,6 +593,14 @@ custom_css = r"""
         box-shadow: none !important;
         display: inline-block !important;
     }
+    /* Ocultar el botón 'Gestionar la aplicación' (viewer badge de Streamlit Cloud) */
+    div[class^="viewerBadge"],
+    div[class*="viewerBadge"],
+    div[data-testid="connection-status"],
+    .viewerBadge_container__16d2a {
+        display: none !important;
+        visibility: hidden !important;
+    }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
