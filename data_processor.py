@@ -205,10 +205,25 @@ def load_and_clean_data(file_source):
     :param file_source: Ruta al archivo (str) o un objeto tipo File de Streamlit.
     :return: DataFrame limpio
     """
-    safe_source, cleanup = get_safe_file_source(file_source)
+    if isinstance(file_source, pd.ExcelFile):
+        safe_source = file_source
+        cleanup = lambda: None
+    else:
+        safe_source, cleanup = get_safe_file_source(file_source)
     try:
         # 1. Cargar el archivo según su tipo
-        if isinstance(safe_source, str) and safe_source.endswith(('.csv', '.CSV')):
+        if isinstance(safe_source, pd.ExcelFile):
+            try:
+                df = pd.read_excel(safe_source, sheet_name='CONSOLIDADO 2026 NOMINA')
+            except Exception as e:
+                try:
+                    sheets = safe_source.sheet_names
+                    nomina_sheets = [s for s in sheets if 'NOMINA' in s.upper()]
+                    sheet_to_load = nomina_sheets[0] if nomina_sheets else sheets[0]
+                    df = pd.read_excel(safe_source, sheet_name=sheet_to_load)
+                except Exception as ex:
+                    raise ValueError(f"Error al leer el archivo Excel: {str(ex)}")
+        elif isinstance(safe_source, str) and safe_source.endswith(('.csv', '.CSV')):
             # Leer CSV detectando el separador (punto y coma o coma)
             try:
                 df = pd.read_csv(safe_source, sep=';', encoding='utf-8')
@@ -217,17 +232,14 @@ def load_and_clean_data(file_source):
         else:
             # Por defecto tratar como Excel
             try:
-                # Leer específicamente la hoja solicitada por el usuario
-                df = pd.read_excel(safe_source, sheet_name='CONSOLIDADO 2026 NOMINA')
+                df = pd.read_excel(safe_source, sheet_name='CONSOLIDADO 2026 NOMINA', engine='calamine')
             except Exception as e:
-                # Fallback en caso de que no exista la pestaña específica o sea otro tipo de Excel
                 try:
-                    xl = pd.ExcelFile(safe_source)
-                    # Seleccionar la primera hoja que contenga "NOMINA" o en su defecto la primera disponible
+                    xl = pd.ExcelFile(safe_source, engine='calamine')
                     sheets = xl.sheet_names
                     nomina_sheets = [s for s in sheets if 'NOMINA' in s.upper()]
                     sheet_to_load = nomina_sheets[0] if nomina_sheets else sheets[0]
-                    df = pd.read_excel(safe_source, sheet_name=sheet_to_load)
+                    df = pd.read_excel(xl, sheet_name=sheet_to_load)
                 except Exception as ex:
                     raise ValueError(f"Error al leer el archivo Excel: {str(ex)}")
     finally:
@@ -278,13 +290,20 @@ def load_and_clean_data(file_source):
     if col_name in df.columns:
         known_supers = set(df[col_name].dropna().astype(str).str.strip().str.upper().unique())
         try:
-            if hasattr(safe_source, 'seek'):
-                safe_source.seek(0)
-            if not isinstance(safe_source, str) or not safe_source.endswith(('.csv', '.CSV')):
-                super_df = pd.read_excel(safe_source, sheet_name='SUPERNUMERARIOS')
-                super_df.columns = [str(c).strip().upper() for c in super_df.columns]
-                if 'NOMBRE' in super_df.columns:
-                    known_supers.update(super_df['NOMBRE'].dropna().astype(str).str.strip().str.upper().unique())
+            if isinstance(safe_source, pd.ExcelFile):
+                if 'SUPERNUMERARIOS' in safe_source.sheet_names:
+                    super_df = pd.read_excel(safe_source, sheet_name='SUPERNUMERARIOS')
+                    super_df.columns = [str(c).strip().upper() for c in super_df.columns]
+                    if 'NOMBRE' in super_df.columns:
+                        known_supers.update(super_df['NOMBRE'].dropna().astype(str).str.strip().str.upper().unique())
+            else:
+                if hasattr(safe_source, 'seek'):
+                    safe_source.seek(0)
+                if not isinstance(safe_source, str) or not safe_source.endswith(('.csv', '.CSV')):
+                    super_df = pd.read_excel(safe_source, sheet_name='SUPERNUMERARIOS', engine='calamine')
+                    super_df.columns = [str(c).strip().upper() for c in super_df.columns]
+                    if 'NOMBRE' in super_df.columns:
+                        known_supers.update(super_df['NOMBRE'].dropna().astype(str).str.strip().str.upper().unique())
         except Exception:
             pass
         
@@ -652,14 +671,23 @@ def load_calendar_targets(file_source):
     por día y por mes para el año 2026, imitando la consulta CALENDARIO_METAS.
     Lunes-Sábado hábil = 7 horas, Domingo o Festivo = 0 horas.
     """
-    safe_source, cleanup = get_safe_file_source(file_source)
+    if isinstance(file_source, pd.ExcelFile):
+        safe_source = file_source
+        cleanup = lambda: None
+    else:
+        safe_source, cleanup = get_safe_file_source(file_source)
     try:
         try:
             # Intentar leer la pestaña FESTIVOS
-            if isinstance(safe_source, str) and safe_source.endswith(('.csv', '.CSV')):
+            if isinstance(safe_source, pd.ExcelFile):
+                if 'FESTIVOS' in safe_source.sheet_names:
+                    fest_df = pd.read_excel(safe_source, sheet_name='FESTIVOS')
+                else:
+                    fest_df = pd.DataFrame(columns=['FECHA'])
+            elif isinstance(safe_source, str) and safe_source.endswith(('.csv', '.CSV')):
                 fest_df = pd.DataFrame(columns=['FECHA'])
             else:
-                fest_df = pd.read_excel(safe_source, sheet_name='FESTIVOS')
+                fest_df = pd.read_excel(safe_source, sheet_name='FESTIVOS', engine='calamine')
         except Exception:
             # Fallback en caso de no encontrarse la pestaña
             fest_df = pd.DataFrame(columns=['FECHA'])
@@ -785,10 +813,17 @@ def load_supernumerario_sheets(file_source):
     Cada hoja tiene columnas: Cedula, Nombre, Fecha, Zona, Cis.
     Retorna un DataFrame con columnas [FECHA_CLEAN, NOMBRE_NORM, MES_NUM] o None.
     """
-    safe_source, cleanup = get_safe_file_source(file_source)
+    if isinstance(file_source, pd.ExcelFile):
+        safe_source = file_source
+        cleanup = lambda: None
+    else:
+        safe_source, cleanup = get_safe_file_source(file_source)
     try:
         try:
-            xl = pd.ExcelFile(safe_source)
+            if isinstance(safe_source, pd.ExcelFile):
+                xl = safe_source
+            else:
+                xl = pd.ExcelFile(safe_source, engine='calamine')
             sheet_names = xl.sheet_names
 
             # Mapeo de nombre de mes en español a número
@@ -865,10 +900,17 @@ def load_plaza_fija_dates(file_source):
     Carga la hoja 'PLAZA FIJA' o 'CONSOLIDADO PLAZAS FIJAS' (si existe en el Excel)
     y retorna un diccionario {NOMBRE_NORMALIZADO: FECHA_TRASLADO} para cada médico.
     """
-    safe_source, cleanup = get_safe_file_source(file_source)
+    if isinstance(file_source, pd.ExcelFile):
+        safe_source = file_source
+        cleanup = lambda: None
+    else:
+        safe_source, cleanup = get_safe_file_source(file_source)
     try:
         try:
-            xl = pd.ExcelFile(safe_source)
+            if isinstance(safe_source, pd.ExcelFile):
+                xl = safe_source
+            else:
+                xl = pd.ExcelFile(safe_source, engine='calamine')
             sheet_names = xl.sheet_names
             
             # Buscar una hoja que contenga "PLAZA FIJA" o "PLAZAS FIJAS"

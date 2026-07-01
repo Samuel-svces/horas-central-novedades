@@ -16,7 +16,7 @@ if %errorlevel% neq 0 (
 )
 
 echo [1/3] Verificando dependencias necesarias de Python...
-py -m pip install pandas openpyxl streamlit xlsxwriter --quiet
+py -m pip install pandas openpyxl streamlit xlsxwriter python-calamine --quiet
 if %errorlevel% neq 0 (
     echo [WARNING] Hubo un problema instalando dependencias. 
     echo Intentando continuar con la ejecución...
