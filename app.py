@@ -647,7 +647,7 @@ def reset_filters():
 
 with st.container():
     st.markdown('<div class="header-banner-marker"></div>', unsafe_allow_html=True)
-    col_config, col_title, col_logo = st.columns([0.6, 6.4, 3.0], vertical_alignment="center")
+    col_config, col_title = st.columns([0.6, 9.4], vertical_alignment="center")
 
     with col_config:
         with st.popover("", help="Configuración de Origen de Datos"):
@@ -728,13 +728,6 @@ with st.container():
             "font-size:28px; margin:0;'>Control de horas Central de novedades</h1>",
             unsafe_allow_html=True
         )
-    with col_logo:
-        logo_b64 = get_base64_image("logo.png")
-        if logo_b64:
-            st.markdown(
-                f'<div class="header-logo-container" style="text-align:right;"><img src="{logo_b64}" style="max-height:48px;"></div>',
-                unsafe_allow_html=True
-            )
 
 # ── Carga automática al arrancar ──────────────────────────────────────────────
 
