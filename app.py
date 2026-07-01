@@ -546,8 +546,11 @@ custom_css = r"""
     button[data-testid="stPopoverButton"]:hover::before { transform: rotate(90deg) !important; }
     button[data-testid="stPopoverButton"] * { display: none !important; font-size: 0 !important;
         width: 0 !important; height: 0 !important; overflow: hidden !important; visibility: hidden !important; }
-    /* Banner de Cabecera (Imagen 1 style) */
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) {
+    /* Banner de Cabecera (Imagen 1 style) - Aplicado solo al contenedor stVerticalBlock específico de la cabecera */
+    .header-banner-marker { display: none !important; }
+    div.element-container:has(.header-banner-marker) { display: none !important; }
+    
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) {
         background: linear-gradient(90deg, #070e1b 0%, #102136 25%, #254668 50%, #5d7d9a 75%, #97acbe 100%) !important;
         border: none !important;
         border-radius: 8px !important;
@@ -555,12 +558,8 @@ custom_css = r"""
         box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
         margin-bottom: 25px !important;
     }
-    
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) > div {
-        padding: 0 !important;
-    }
 
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) h1 {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) h1 {
         color: #ffffff !important;
         font-family: 'Outfit', sans-serif !important;
         font-weight: 700 !important;
@@ -569,7 +568,7 @@ custom_css = r"""
         line-height: 1.2 !important;
     }
 
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"] {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) button[data-testid="stPopoverButton"] {
         background-color: #122137 !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
         color: #ffffff !important;
@@ -578,19 +577,20 @@ custom_css = r"""
         width: 38px !important;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
     }
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"]:hover {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) button[data-testid="stPopoverButton"]:hover {
         background-color: #1a2f4c !important;
         border-color: rgba(255, 255, 255, 0.3) !important;
     }
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"]::before {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) button[data-testid="stPopoverButton"]::before {
         color: #ffffff !important;
     }
 
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) .header-logo-container img {
-        background-color: rgba(255, 255, 255, 0.95) !important;
-        padding: 6px 14px !important;
-        border-radius: 6px !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+    /* Imagen del logo sin fondo blanco, transparente para integrarse con el degradado */
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) .header-logo-container img {
+        background-color: transparent !important;
+        padding: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
         display: inline-block !important;
     }
 </style>
@@ -724,8 +724,8 @@ with st.container():
 
     with col_title:
         st.markdown(
-            "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#0b3c5d; "
-            "font-size:38px; margin:0;'>Control de horas Central de novedades</h1>",
+            "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#ffffff; "
+            "font-size:28px; margin:0;'>Control de horas Central de novedades</h1>",
             unsafe_allow_html=True
         )
     with col_logo:
