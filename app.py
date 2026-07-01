@@ -546,6 +546,53 @@ custom_css = r"""
     button[data-testid="stPopoverButton"]:hover::before { transform: rotate(90deg) !important; }
     button[data-testid="stPopoverButton"] * { display: none !important; font-size: 0 !important;
         width: 0 !important; height: 0 !important; overflow: hidden !important; visibility: hidden !important; }
+    /* Banner de Cabecera (Imagen 1 style) */
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) {
+        background: linear-gradient(90deg, #070e1b 0%, #102136 25%, #254668 50%, #5d7d9a 75%, #97acbe 100%) !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 14px 24px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1) !important;
+        margin-bottom: 25px !important;
+    }
+    
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) > div {
+        padding: 0 !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) h1 {
+        color: #ffffff !important;
+        font-family: 'Outfit', sans-serif !important;
+        font-weight: 700 !important;
+        font-size: 28px !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"] {
+        background-color: #122137 !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        color: #ffffff !important;
+        border-radius: 6px !important;
+        height: 38px !important;
+        width: 38px !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"]:hover {
+        background-color: #1a2f4c !important;
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"]::before {
+        color: #ffffff !important;
+    }
+
+    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) .header-logo-container img {
+        background-color: rgba(255, 255, 255, 0.95) !important;
+        padding: 6px 14px !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+        display: inline-block !important;
+    }
 </style>
 """
 st.markdown(custom_css, unsafe_allow_html=True)
@@ -598,94 +645,96 @@ def reset_filters():
 
 # ── Cabecera ──────────────────────────────────────────────────────────────────
 
-col_config, col_title, col_logo = st.columns([0.6, 6.4, 3.0], vertical_alignment="center")
+with st.container():
+    st.markdown('<div class="header-banner-marker"></div>', unsafe_allow_html=True)
+    col_config, col_title, col_logo = st.columns([0.6, 6.4, 3.0], vertical_alignment="center")
 
-with col_config:
-    with st.popover("", help="Configuración de Origen de Datos"):
-        st.markdown("<h3 style='margin:0 0 10px 0; font-family:Outfit,sans-serif; font-weight:700; color:#0b3c5d;'>⚙️ Configuración de Datos</h3>", unsafe_allow_html=True)
+    with col_config:
+        with st.popover("", help="Configuración de Origen de Datos"):
+            st.markdown("<h3 style='margin:0 0 10px 0; font-family:Outfit,sans-serif; font-weight:700; color:#0b3c5d;'>⚙️ Configuración de Datos</h3>", unsafe_allow_html=True)
 
-        if 'hist_loaded' in st.session_state:
-            if st.session_state.hist_loaded:
-                st.sidebar.success("✅ Archivo Histórico Cargado")
+            if 'hist_loaded' in st.session_state:
+                if st.session_state.hist_loaded:
+                    st.sidebar.success("✅ Archivo Histórico Cargado")
+                else:
+                    st.sidebar.error("❌ Archivo Histórico NO Cargado")
+
+            # Mostrar última actualización si existe
+            if st.session_state.last_refresh:
+                st.info(f"🕐 Última carga: **{st.session_state.last_refresh}**")
+
+            # Botón para recargar desde OneDrive (siempre visible)
+            if get_onedrive_config():
+                if st.button("🔄 Recargar desde SharePoint", use_container_width=True):
+                    st.session_state.df_raw = None
+                    st.session_state.load_error = None
+                    cargar_desde_onedrive()
+                    st.rerun()
             else:
-                st.sidebar.error("❌ Archivo Histórico NO Cargado")
-
-        # Mostrar última actualización si existe
-        if st.session_state.last_refresh:
-            st.info(f"🕐 Última carga: **{st.session_state.last_refresh}**")
-
-        # Botón para recargar desde OneDrive (siempre visible)
-        if get_onedrive_config():
-            if st.button("🔄 Recargar desde SharePoint", use_container_width=True):
-                st.session_state.df_raw = None
-                st.session_state.load_error = None
-                cargar_desde_onedrive()
-                st.rerun()
-        else:
-            # Solo en local: mostrar opciones manuales
-            st.warning("⚠️ Sin credenciales de OneDrive. Modo local activo.")
-            file_path = st.text_input(
-                "Ruta del archivo local (.xlsx):",
-                key="file_path_input"
-            )
-            if os.path.exists(file_path):
-                mtime = os.path.getmtime(file_path)
-                last_updated = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %I:%M:%S %p')
-                st.success(f"Archivo encontrado — Modificado: **{last_updated}**")
-            else:
-                st.error("❌ Archivo no encontrado.")
-
-            if st.button("🔄 Cargar desde ruta local", use_container_width=True):
+                # Solo en local: mostrar opciones manuales
+                st.warning("⚠️ Sin credenciales de OneDrive. Modo local activo.")
+                file_path = st.text_input(
+                    "Ruta del archivo local (.xlsx):",
+                    key="file_path_input"
+                )
                 if os.path.exists(file_path):
-                    try:
-                        safe_path, cleanup = dp.get_safe_file_source(file_path)
+                    mtime = os.path.getmtime(file_path)
+                    last_updated = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %I:%M:%S %p')
+                    st.success(f"Archivo encontrado — Modificado: **{last_updated}**")
+                else:
+                    st.error("❌ Archivo no encontrado.")
+
+                if st.button("🔄 Cargar desde ruta local", use_container_width=True):
+                    if os.path.exists(file_path):
                         try:
-                            xl = pd.ExcelFile(safe_path, engine='calamine')
-                            st.session_state.df_raw = dp.load_and_clean_data(xl)
-                            st.session_state.df_super = dp.load_supernumerario_sheets(xl)
-                            st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
-                            m, d = dp.load_calendar_targets(xl)
-                            st.session_state.monthly_targets = m
-                            st.session_state.daily_targets = d
-                            st.session_state.load_error = None
-                            st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
-                        finally:
-                            cleanup()
+                            safe_path, cleanup = dp.get_safe_file_source(file_path)
+                            try:
+                                xl = pd.ExcelFile(safe_path, engine='calamine')
+                                st.session_state.df_raw = dp.load_and_clean_data(xl)
+                                st.session_state.df_super = dp.load_supernumerario_sheets(xl)
+                                st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
+                                m, d = dp.load_calendar_targets(xl)
+                                st.session_state.monthly_targets = m
+                                st.session_state.daily_targets = d
+                                st.session_state.load_error = None
+                                st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
+                            finally:
+                                cleanup()
+                            st.rerun()
+                        except Exception as e:
+                            st.session_state.load_error = str(e)
+
+                uploaded_file = st.file_uploader("O sube el archivo manualmente:", type=["xlsx", "xls"])
+                if uploaded_file is not None:
+                    try:
+                        file_bytes = io.BytesIO(uploaded_file.read())
+                        xl = pd.ExcelFile(file_bytes, engine='calamine')
+                        st.session_state.df_raw = dp.load_and_clean_data(xl)
+                        st.session_state.df_super = dp.load_supernumerario_sheets(xl)
+                        st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
+                        m, d = dp.load_calendar_targets(xl)
+                        st.session_state.monthly_targets = m
+                        st.session_state.daily_targets = d
+                        st.session_state.load_error = None
+                        st.session_state.uploaded_file_name = uploaded_file.name
+                        st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
                         st.rerun()
                     except Exception as e:
                         st.session_state.load_error = str(e)
 
-            uploaded_file = st.file_uploader("O sube el archivo manualmente:", type=["xlsx", "xls"])
-            if uploaded_file is not None:
-                try:
-                    file_bytes = io.BytesIO(uploaded_file.read())
-                    xl = pd.ExcelFile(file_bytes, engine='calamine')
-                    st.session_state.df_raw = dp.load_and_clean_data(xl)
-                    st.session_state.df_super = dp.load_supernumerario_sheets(xl)
-                    st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
-                    m, d = dp.load_calendar_targets(xl)
-                    st.session_state.monthly_targets = m
-                    st.session_state.daily_targets = d
-                    st.session_state.load_error = None
-                    st.session_state.uploaded_file_name = uploaded_file.name
-                    st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
-                    st.rerun()
-                except Exception as e:
-                    st.session_state.load_error = str(e)
-
-with col_title:
-    st.markdown(
-        "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#0b3c5d; "
-        "font-size:38px; margin:0;'>Control de horas Central de novedades</h1>",
-        unsafe_allow_html=True
-    )
-with col_logo:
-    logo_b64 = get_base64_image("logo.png")
-    if logo_b64:
+    with col_title:
         st.markdown(
-            f'<div style="text-align:right;"><img src="{logo_b64}" style="max-height:55px;"></div>',
+            "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#0b3c5d; "
+            "font-size:38px; margin:0;'>Control de horas Central de novedades</h1>",
             unsafe_allow_html=True
         )
+    with col_logo:
+        logo_b64 = get_base64_image("logo.png")
+        if logo_b64:
+            st.markdown(
+                f'<div class="header-logo-container" style="text-align:right;"><img src="{logo_b64}" style="max-height:48px;"></div>',
+                unsafe_allow_html=True
+            )
 
 # ── Carga automática al arrancar ──────────────────────────────────────────────
 
