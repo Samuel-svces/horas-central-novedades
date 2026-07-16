@@ -593,13 +593,23 @@ custom_css = r"""
         box-shadow: none !important;
         display: inline-block !important;
     }
-    /* Ocultar el botón 'Gestionar la aplicación' (viewer badge de Streamlit Cloud) */
-    div[class^="viewerBadge"],
-    div[class*="viewerBadge"],
-    div[data-testid="connection-status"],
-    .viewerBadge_container__16d2a {
+    /* Ocultar el botón 'Gestionar la aplicación' (viewer badge de Streamlit Cloud) y botones del desarrollador */
+    div[data-testid="stConnectionStatus"],
+    div[data-testid="stStatusWidget"],
+    div[data-testid="stDeveloperTools"],
+    div[data-testid="stAppToolbar"],
+    *[class*="viewerBadge"],
+    *[class*="viewer-badge"],
+    *[class*="ViewerBadge"],
+    *[class*="styles_viewerBadge"],
+    *[class*="styles_viewerBadge_"],
+    *[class*="styles_viewer-badge"] {
         display: none !important;
         visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        height: 0px !important;
+        width: 0px !important;
     }
 </style>
 """
