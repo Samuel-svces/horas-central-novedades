@@ -700,6 +700,11 @@ def load_calendar_targets(file_source):
         fest_df['FECHA_CLEAN'] = pd.to_datetime(fest_df['FECHA'], errors='coerce')
         festivos = fest_df['FECHA_CLEAN'].dt.date.dropna().tolist()
         
+    # Asegurar que el 13 de julio de 2026 sea considerado festivo (en Colombia fue festivo)
+    julio_13 = pd.Timestamp('2026-07-13').date()
+    if julio_13 not in festivos:
+        festivos.append(julio_13)
+        
     # Generar todos los días del año 2026 (365 días)
     dates = pd.date_range('2026-01-01', '2026-12-31')
     df_cal = pd.DataFrame({'Fecha': dates})
