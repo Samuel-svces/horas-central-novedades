@@ -474,19 +474,19 @@ custom_css = r"""
         font-size: 18px !important; visibility: visible !important; color: inherit !important; }
     .element-container:has(.clear-btn) + .element-container button {
         background-color: #ffffff !important; color: #d93025 !important;
-        border: 1.5px solid #d93025 !important; width: 100% !important; height: 40px !important;
+        border: 1.5px solid #d93025 !important; width: 100% !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important;
         margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.clear-btn) + .element-container button:hover {
         background-color: #d93025 !important; color: #ffffff !important; }
     .element-container:has(.export-btn) + .element-container button {
         background-color: #ffffff !important; color: #1e8e3e !important;
-        border: 1.5px solid #1e8e3e !important; width: 100% !important; height: 40px !important;
+        border: 1.5px solid #1e8e3e !important; width: 100% !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important;
         margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.export-btn) + .element-container button:hover {
         background-color: #1e8e3e !important; color: #ffffff !important; }
     .element-container:has(.search-btn) + .element-container button {
         background-color: #ffffff !important; color: #1a73e8 !important;
-        border: 1.5px solid #1a73e8 !important; width: 100% !important; height: 40px !important;
+        border: 1.5px solid #1a73e8 !important; width: 100% !important; height: 34px !important; min-height: 34px !important; max-height: 34px !important;
         margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.search-btn) + .element-container button:hover {
         background-color: #1a73e8 !important; color: #ffffff !important; }
@@ -509,24 +509,19 @@ custom_css = r"""
     div[data-testid="stSelectbox"] > div > div, div[data-testid="stMultiSelect"] > div > div {
         border: 1.5px solid #cccccc !important; background-color: #ffffff !important;
         border-radius: 6px !important; transition: border-color 0.2s ease-in-out !important;
-        min-height: 40px !important; max-height: 40px !important;
+        min-height: 34px !important; max-height: 34px !important; font-size: 12.5px !important;
         overflow-y: hidden !important; flex-wrap: nowrap !important; overflow-x: auto !important; }
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
+        height: 22px !important; font-size: 11.5px !important; margin-top: 0px !important; margin-bottom: 0px !important; }
     div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
         border-color: #1a73e8 !important; }
     .filter-panel-marker { display: none !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
         border: 1.5px solid #cccccc !important; border-radius: 8px !important;
-        background-color: #ffffff !important; padding: 16px 20px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; margin-bottom: 20px !important; }
+        background-color: #ffffff !important; padding: 10px 14px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; margin-bottom: 16px !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
-    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
-    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
-        border: 1.5px solid #cccccc !important; border-radius: 8px !important;
-        background-color: #ffffff !important; padding: 16px 20px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; margin-bottom: 20px !important; }
-    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
+        flex-wrap: nowrap !important; gap: 8px !important; align-items: flex-end !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
     .table-scroll-container { max-height: 420px; overflow-y: auto; overflow-x: auto;
         border: 1.5px solid #cccccc; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -868,17 +863,17 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2.2, 4.5, 0.5, 0.5, 0.5], gap="small")
+    c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.4, 2.6, 0.45, 0.45, 0.45], gap="small")
 
     with c1:
-        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
         agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
         agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget", label_visibility="collapsed")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
 
     with c2:
-        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Mes:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Mes:</div>", unsafe_allow_html=True)
         active_keys = [k for k in st.session_state.keys() if k.startswith("mes_sel_draft_widget_")]
         num_items = 0
         if active_keys:
@@ -897,7 +892,7 @@ with st.container(border=True):
     nombres_disponibles = sorted(df_para_filtros['NOMBRE SUPER VALIDADO'].dropna().unique().tolist())
 
     with c3:
-        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Supernumerario:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Supernumerario:</div>", unsafe_allow_html=True)
         active_nom_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
         num_nom_items = 0
         if active_nom_keys:
@@ -915,7 +910,7 @@ with st.container(border=True):
         st.session_state.nombre_sel_draft = nombres_sel_draft
 
     with c4:
-        st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:12px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
         if st.button("Buscar", key="btn_search", use_container_width=True):
             st.session_state.mes_sel = st.session_state.mes_sel_draft
