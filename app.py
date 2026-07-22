@@ -691,8 +691,10 @@ def clear_cedula():
 def clear_nombre():
     st.session_state.nombre_sel = []
     st.session_state.nombre_sel_draft = []
+    st.session_state.cedula_sel = []
+    st.session_state.cedula_sel_draft = []
     for k in list(st.session_state.keys()):
-        if k.startswith("nombre_sel_draft_widget_"):
+        if k.startswith("nombre_sel_draft_widget_") or k.startswith("cedula_sel_draft_widget_"):
             del st.session_state[k]
 
 clear_super_y_mes = clear_nombre
@@ -702,17 +704,32 @@ def on_change_nombre():
     if active_keys:
         val = st.session_state[active_keys[0]]
         if isinstance(val, list):
-            if 'nombres_disponibles' in globals() or 'nombres_disponibles' in locals():
-                pass
             if len(val) > 20:  # Si se seleccionaron casi todos / Select all
                 val = []
                 st.session_state[active_keys[0]] = []
             st.session_state.nombre_sel_draft = val
         else:
             st.session_state.nombre_sel_draft = []
+
     st.session_state.nombre_sel = st.session_state.nombre_sel_draft
+
+    # Sincronizar automáticamente la Cédula correspondiente
+    df_raw = st.session_state.get('df_raw')
+    if df_raw is not None and st.session_state.nombre_sel:
+        matching_cedulas = sorted(df_raw[df_raw['NOMBRE SUPER VALIDADO'].isin(st.session_state.nombre_sel)]['CEDULA_FINAL'].dropna().astype(str).unique().tolist())
+        st.session_state.cedula_sel_draft = matching_cedulas
+        st.session_state.cedula_sel = matching_cedulas
+        for k in list(st.session_state.keys()):
+            if k.startswith("cedula_sel_draft_widget_"):
+                del st.session_state[k]
+    elif not st.session_state.nombre_sel:
+        st.session_state.cedula_sel_draft = []
+        st.session_state.cedula_sel = []
+        for k in list(st.session_state.keys()):
+            if k.startswith("cedula_sel_draft_widget_"):
+                del st.session_state[k]
+
     st.session_state.mes_sel = st.session_state.mes_sel_draft
-    st.session_state.cedula_sel = st.session_state.cedula_sel_draft
     st.session_state.agrupacion_sel = st.session_state.agrupacion_sel_draft
 
 def on_change_cedula():
@@ -726,9 +743,26 @@ def on_change_cedula():
             st.session_state.cedula_sel_draft = val
         else:
             st.session_state.cedula_sel_draft = []
+
     st.session_state.cedula_sel = st.session_state.cedula_sel_draft
+
+    # Sincronizar automáticamente el Supernumerario correspondiente
+    df_raw = st.session_state.get('df_raw')
+    if df_raw is not None and st.session_state.cedula_sel:
+        matching_nombres = sorted(df_raw[df_raw['CEDULA_FINAL'].astype(str).isin(st.session_state.cedula_sel)]['NOMBRE SUPER VALIDADO'].dropna().astype(str).unique().tolist())
+        st.session_state.nombre_sel_draft = matching_nombres
+        st.session_state.nombre_sel = matching_nombres
+        for k in list(st.session_state.keys()):
+            if k.startswith("nombre_sel_draft_widget_"):
+                del st.session_state[k]
+    elif not st.session_state.cedula_sel:
+        st.session_state.nombre_sel_draft = []
+        st.session_state.nombre_sel = []
+        for k in list(st.session_state.keys()):
+            if k.startswith("nombre_sel_draft_widget_"):
+                del st.session_state[k]
+
     st.session_state.mes_sel = st.session_state.mes_sel_draft
-    st.session_state.nombre_sel = st.session_state.nombre_sel_draft
     st.session_state.agrupacion_sel = st.session_state.agrupacion_sel_draft
 
 
