@@ -512,33 +512,39 @@ custom_css = r"""
     div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
         border-color: #1a73e8 !important; }
     .filter-panel-marker { display: none !important; }
-    .single-clear-btn { display: none !important; }
-    div.element-container:has(.single-clear-btn) { display: none !important; }
-    div.element-container:has(.single-clear-btn) + .element-container button {
-        background-color: #f1f5f9 !important;
-        color: #64748b !important;
-        border: 1px solid #cbd5e1 !important;
-        border-radius: 50% !important;
-        width: 20px !important;
-        height: 20px !important;
-        min-height: 20px !important;
-        max-width: 20px !important;
-        padding: 0 !important;
-        font-size: 11px !important;
-        font-weight: 700 !important;
-        line-height: 1 !important;
+    .clear-super-btn { display: none !important; }
+    div.element-container:has(.clear-super-btn) { display: none !important; }
+    div.element-container:has(.clear-super-btn) + .element-container button {
+        background-color: #ffffff !important;
+        color: #d93025 !important;
+        border: 1.5px solid #d93025 !important;
+        border-radius: 6px !important;
+        width: 100% !important;
+        height: 40px !important;
+        min-height: 40px !important;
+        max-height: 40px !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
-        margin-top: 0px !important;
-        float: right !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
-    div.element-container:has(.single-clear-btn) + .element-container button:hover {
+    div.element-container:has(.clear-super-btn) + .element-container button * {
+        display: none !important;
+    }
+    div.element-container:has(.clear-super-btn) + .element-container button::after {
+        font-family: "bootstrap-icons" !important;
+        content: "\F5DE" !important;
+        font-size: 18px !important;
+        visibility: visible !important;
+        color: inherit !important;
+        display: inline-block !important;
+    }
+    div.element-container:has(.clear-super-btn) + .element-container button:hover {
         background-color: #d93025 !important;
         color: #ffffff !important;
-        border-color: #d93025 !important;
     }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
         border: 1.5px solid #cccccc !important; border-radius: 8px !important;
@@ -900,31 +906,15 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 2.8, 1.0, 1.0, 1.0])
+    c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 3.4, 1.0, 1.0, 1.0])
 
     with c1:
-        col_l, col_r = st.columns([0.75, 0.25])
-        with col_l:
-            st.markdown("<div style='font-size:13px; font-weight:700; color:#202124; margin-bottom:4px;'>Agrupar por:</div>", unsafe_allow_html=True)
-        with col_r:
-            if st.session_state.agrupacion_sel_draft != "Por Mes" or st.session_state.agrupacion_sel != "Por Mes":
-                st.markdown('<div class="single-clear-btn"></div>', unsafe_allow_html=True)
-                st.button("✕", key="btn_clear_agrupacion", help="Borrar filtro Agrupar por", on_click=clear_agrupacion)
-
         agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
-        agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget", label_visibility="collapsed")
+        agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
 
     with c2:
-        col_l, col_r = st.columns([0.75, 0.25])
-        with col_l:
-            st.markdown("<div style='font-size:13px; font-weight:700; color:#202124; margin-bottom:4px;'>Mes:</div>", unsafe_allow_html=True)
-        with col_r:
-            if st.session_state.mes_sel_draft or st.session_state.mes_sel:
-                st.markdown('<div class="single-clear-btn"></div>', unsafe_allow_html=True)
-                st.button("✕", key="btn_clear_mes", help="Borrar filtro Mes", on_click=clear_mes)
-
         active_keys = [k for k in st.session_state.keys() if k.startswith("mes_sel_draft_widget_")]
         num_items = 0
         if active_keys:
@@ -934,7 +924,7 @@ with st.container(border=True):
                 st.session_state.mes_sel_draft = val
         mes_key = f"mes_sel_draft_widget_{num_items}"
         default_meses = [m for m in st.session_state.mes_sel_draft if m in meses_disponibles]
-        meses_sel_draft = st.multiselect("Mes:", options=meses_disponibles, default=default_meses, key=mes_key, placeholder="Seleccionar...", label_visibility="collapsed")
+        meses_sel_draft = st.multiselect("Mes:", options=meses_disponibles, default=default_meses, key=mes_key, placeholder="Seleccionar...")
         st.session_state.mes_sel_draft = meses_sel_draft
 
     df_para_filtros = df_raw.copy()
@@ -948,30 +938,20 @@ with st.container(border=True):
         st.session_state.nombre_sel_draft = "Todos"
 
     with c3:
-        col_l, col_r = st.columns([0.75, 0.25])
-        with col_l:
-            st.markdown("<div style='font-size:13px; font-weight:700; color:#202124; margin-bottom:4px;'>Cedula:</div>", unsafe_allow_html=True)
-        with col_r:
-            if st.session_state.cedula_sel_draft != "Todas" or st.session_state.cedula_sel != "Todas":
-                st.markdown('<div class="single-clear-btn"></div>', unsafe_allow_html=True)
-                st.button("✕", key="btn_clear_cedula", help="Borrar filtro Cédula", on_click=clear_cedula)
-
         cedula_idx = cedulas_disponibles.index(st.session_state.cedula_sel_draft) if st.session_state.cedula_sel_draft in cedulas_disponibles else 0
-        cedula_sel_draft = st.selectbox("Cedula:", options=cedulas_disponibles, index=cedula_idx, key="cedula_sel_draft_widget", label_visibility="collapsed", on_change=on_change_cedula)
+        cedula_sel_draft = st.selectbox("Cedula:", options=cedulas_disponibles, index=cedula_idx, key="cedula_sel_draft_widget", on_change=on_change_cedula)
         st.session_state.cedula_sel_draft = cedula_sel_draft
 
     with c4:
-        col_l, col_r = st.columns([0.75, 0.25])
-        with col_l:
-            st.markdown("<div style='font-size:13px; font-weight:700; color:#202124; margin-bottom:4px;'>Supernumerario:</div>", unsafe_allow_html=True)
-        with col_r:
-            if st.session_state.nombre_sel_draft != "Todos" or st.session_state.nombre_sel != "Todos":
-                st.markdown('<div class="single-clear-btn"></div>', unsafe_allow_html=True)
-                st.button("✕", key="btn_clear_nombre", help="Borrar filtro Supernumerario", on_click=clear_nombre)
-
-        nombre_idx = nombres_disponibles.index(st.session_state.nombre_sel_draft) if st.session_state.nombre_sel_draft in nombres_disponibles else 0
-        nombre_sel_draft = st.selectbox("Supernumerario:", options=nombres_disponibles, index=nombre_idx, key="nombre_sel_draft_widget", label_visibility="collapsed", on_change=on_change_nombre)
-        st.session_state.nombre_sel_draft = nombre_sel_draft
+        st.markdown("<div style='font-size:14px; font-weight:500; color:#202124; margin-bottom:4px;'>Supernumerario:</div>", unsafe_allow_html=True)
+        c_sel, c_del = st.columns([0.80, 0.20])
+        with c_sel:
+            nombre_idx = nombres_disponibles.index(st.session_state.nombre_sel_draft) if st.session_state.nombre_sel_draft in nombres_disponibles else 0
+            nombre_sel_draft = st.selectbox("Supernumerario:", options=nombres_disponibles, index=nombre_idx, key="nombre_sel_draft_widget", label_visibility="collapsed", on_change=on_change_nombre)
+            st.session_state.nombre_sel_draft = nombre_sel_draft
+        with c_del:
+            st.markdown('<div class="clear-super-btn"></div>', unsafe_allow_html=True)
+            st.button("", key="btn_clear_nombre", help="Borrar filtro Supernumerario", on_click=clear_nombre)
 
     with c5:
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
