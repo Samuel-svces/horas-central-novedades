@@ -508,7 +508,8 @@ custom_css = r"""
     .badge-red { background-color: #d93025 !important; }
     div[data-testid="stSelectbox"] > div > div, div[data-testid="stMultiSelect"] > div > div {
         border: 1.5px solid #cccccc !important; background-color: #ffffff !important;
-        border-radius: 6px !important; transition: border-color 0.2s ease-in-out !important; }
+        border-radius: 6px !important; transition: border-color 0.2s ease-in-out !important;
+        min-height: 40px !important; max-height: 40px !important; }
     div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
         border-color: #1a73e8 !important; }
     .filter-panel-marker { display: none !important; }
@@ -869,14 +870,14 @@ with st.container(border=True):
     c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 2.8, 1.0, 1.0, 1.0])
 
     with c1:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Agrupar por:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
         agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
         agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget", label_visibility="collapsed")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
 
     with c2:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Mes:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Mes:</div>", unsafe_allow_html=True)
         active_keys = [k for k in st.session_state.keys() if k.startswith("mes_sel_draft_widget_")]
         num_items = 0
         if active_keys:
@@ -896,7 +897,7 @@ with st.container(border=True):
     nombres_disponibles = sorted(df_para_filtros['NOMBRE SUPER VALIDADO'].dropna().unique().tolist())
 
     with c3:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Cedula:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Cedula:</div>", unsafe_allow_html=True)
         active_ced_keys = [k for k in st.session_state.keys() if k.startswith("cedula_sel_draft_widget_")]
         num_ced_items = 0
         if active_ced_keys:
@@ -911,7 +912,7 @@ with st.container(border=True):
         st.session_state.cedula_sel_draft = cedulas_sel_draft
 
     with c4:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Supernumerario:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Supernumerario:</div>", unsafe_allow_html=True)
         active_nom_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
         num_nom_items = 0
         if active_nom_keys:
