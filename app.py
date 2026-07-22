@@ -515,6 +515,8 @@ custom_css = r"""
         display: flex !important; align-items: center !important;
         overflow: hidden !important; }
     div[data-testid="stSelectbox"] > div > div:hover { border-color: #1a73e8 !important; }
+    div[data-testid="stSelectbox"] [data-baseweb="select"],
+    div[data-testid="stSelectbox"] [data-baseweb="select"] > div { background-color: #ffffff !important; }
     /* ── Multiselect: contenedor de altura fija con scroll horizontal ── */
     div[data-testid="stMultiSelect"] > div > div {
         border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
@@ -527,16 +529,19 @@ custom_css = r"""
         scrollbar-width: none !important; }
     div[data-testid="stMultiSelect"] > div > div::-webkit-scrollbar { display: none !important; }
     div[data-testid="stMultiSelect"] > div > div:hover { border-color: #1a73e8 !important; }
-    /* ── Tags: una sola línea, texto negro, no se expanden ──────────── */
+    div[data-testid="stMultiSelect"] [data-baseweb="select"],
+    div[data-testid="stMultiSelect"] [data-baseweb="select"] > div { background-color: #ffffff !important; }
+    /* ── Tags: texto completo sin truncar, fondo claro, letra negra ──── */
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
         background-color: #eef2ff !important; border: 1px solid #c7d2fe !important;
         border-radius: 4px !important; flex-shrink: 0 !important;
         height: 26px !important; min-height: 26px !important; max-height: 26px !important;
         padding: 0 6px 0 8px !important; margin: 0 !important;
         display: inline-flex !important; align-items: center !important; }
-    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] span {
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] > span {
         color: #1e1b4b !important; font-size: 12px !important; font-weight: 600 !important;
-        white-space: nowrap !important; line-height: 1 !important; }
+        white-space: nowrap !important; line-height: 1 !important;
+        max-width: none !important; overflow: visible !important; text-overflow: unset !important; }
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] svg { fill: #6366f1 !important; }
     /* ── Panel de filtros ──────────────────────────────────────────────── */
     .filter-panel-marker { display: none !important; }
@@ -890,14 +895,14 @@ with st.container(border=True):
     c1, c2, c3, c4, c5, c6 = st.columns([3, 3, 3, 0.6, 0.6, 0.6], gap="small")
 
     with c1:
-        st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:4px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
         agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
         agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget", label_visibility="collapsed")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
 
     with c2:
-        st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Mes:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:4px; line-height:1.2;'>Mes:</div>", unsafe_allow_html=True)
         active_keys = [k for k in st.session_state.keys() if k.startswith("mes_sel_draft_widget_")]
         num_items = 0
         if active_keys:
@@ -916,7 +921,7 @@ with st.container(border=True):
     nombres_disponibles = sorted(df_para_filtros['NOMBRE SUPER VALIDADO'].dropna().unique().tolist())
 
     with c3:
-        st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Supernumerario:</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:4px; line-height:1.2;'>Supernumerario:</div>", unsafe_allow_html=True)
         active_nom_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
         num_nom_items = 0
         if active_nom_keys:
