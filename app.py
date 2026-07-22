@@ -629,12 +629,12 @@ current_month_name = dp.MESES_MAP.get(get_local_now().month, "Enero")
 
 defaults = {
     'mes_sel': [current_month_name],
-    'cedula_sel': "Todas",
-    'nombre_sel': "Todos",
+    'cedula_sel': [],
+    'nombre_sel': [],
     'agrupacion_sel': "Por Mes",
     'mes_sel_draft': [current_month_name],
-    'cedula_sel_draft': "Todas",
-    'nombre_sel_draft': "Todos",
+    'cedula_sel_draft': [],
+    'nombre_sel_draft': [],
     'agrupacion_sel_draft': "Por Mes",
     'file_path_input': r"C:\Users\JuanJoseOsorioMolina\OneDrive - U.T SAN VICENTE CES\CONSOLIDADOS\CONSOLIDADO 2026\CONSOLIDADO 2026.xlsx",
     'uploaded_file_name': None,
@@ -653,19 +653,18 @@ for k, v in defaults.items():
 
 def reset_filters():
     st.session_state.mes_sel = []
-    st.session_state.cedula_sel = "Todas"
-    st.session_state.nombre_sel = "Todos"
+    st.session_state.cedula_sel = []
+    st.session_state.nombre_sel = []
     st.session_state.agrupacion_sel = "Por Mes"
     st.session_state.mes_sel_draft = []
-    st.session_state.cedula_sel_draft = "Todas"
-    st.session_state.nombre_sel_draft = "Todos"
+    st.session_state.cedula_sel_draft = []
+    st.session_state.nombre_sel_draft = []
     st.session_state.agrupacion_sel_draft = "Por Mes"
     for k in list(st.session_state.keys()):
-        if k.startswith("mes_sel_draft_widget_"):
+        if k.startswith("mes_sel_draft_widget_") or k.startswith("cedula_sel_draft_widget_") or k.startswith("nombre_sel_draft_widget_"):
             del st.session_state[k]
-    for k in ['cedula_sel_draft_widget', 'nombre_sel_draft_widget', 'agrupacion_sel_draft_widget']:
-        if k in st.session_state:
-            st.session_state[k] = defaults.get(k.replace('_widget', ''), "Todas")
+    if 'agrupacion_sel_draft_widget' in st.session_state:
+        st.session_state.agrupacion_sel_draft_widget = "Por Mes"
 
 def clear_agrupacion():
     st.session_state.agrupacion_sel = "Por Mes"
@@ -681,38 +680,20 @@ def clear_mes():
             del st.session_state[k]
 
 def clear_cedula():
-    st.session_state.cedula_sel = "Todas"
-    st.session_state.cedula_sel_draft = "Todas"
-    if 'cedula_sel_draft_widget' in st.session_state:
-        st.session_state.cedula_sel_draft_widget = "Todas"
-    st.session_state.nombre_sel = "Todos"
-    st.session_state.nombre_sel_draft = "Todos"
-    if 'nombre_sel_draft_widget' in st.session_state:
-        st.session_state.nombre_sel_draft_widget = "Todos"
+    st.session_state.cedula_sel = []
+    st.session_state.cedula_sel_draft = []
+    for k in list(st.session_state.keys()):
+        if k.startswith("cedula_sel_draft_widget_"):
+            del st.session_state[k]
 
 def clear_nombre():
-    st.session_state.nombre_sel = "Todos"
-    st.session_state.nombre_sel_draft = "Todos"
-    if 'nombre_sel_draft_widget' in st.session_state:
-        st.session_state.nombre_sel_draft_widget = "Todos"
-    st.session_state.cedula_sel = "Todas"
-    st.session_state.cedula_sel_draft = "Todas"
-    if 'cedula_sel_draft_widget' in st.session_state:
-        st.session_state.cedula_sel_draft_widget = "Todas"
-
-def on_change_nombre():
-    val = st.session_state.get("nombre_sel_draft_widget", "Todos")
-    st.session_state.nombre_sel_draft = val
-    st.session_state.cedula_sel_draft = "Todas"
-    if 'cedula_sel_draft_widget' in st.session_state:
-        st.session_state.cedula_sel_draft_widget = "Todas"
-
-def on_change_cedula():
-    val = st.session_state.get("cedula_sel_draft_widget", "Todas")
-    st.session_state.cedula_sel_draft = val
-    st.session_state.nombre_sel_draft = "Todos"
-    if 'nombre_sel_draft_widget' in st.session_state:
-        st.session_state.nombre_sel_draft_widget = "Todos"
+    st.session_state.nombre_sel = []
+    st.session_state.nombre_sel_draft = []
+    st.session_state.cedula_sel = []
+    st.session_state.cedula_sel_draft = []
+    for k in list(st.session_state.keys()):
+        if k.startswith("nombre_sel_draft_widget_") or k.startswith("cedula_sel_draft_widget_"):
+            del st.session_state[k]
 
 
 # ── Cabecera ──────────────────────────────────────────────────────────────────
@@ -860,9 +841,15 @@ df_raw = st.session_state.df_raw
 df_filtrado = df_raw.copy()
 if st.session_state.mes_sel:
     df_filtrado = df_filtrado[df_filtrado['MES'].isin(st.session_state.mes_sel)]
-if st.session_state.cedula_sel != "Todas":
+
+if isinstance(st.session_state.cedula_sel, list) and st.session_state.cedula_sel:
+    df_filtrado = df_filtrado[df_filtrado['CEDULA_FINAL'].isin(st.session_state.cedula_sel)]
+elif isinstance(st.session_state.cedula_sel, str) and st.session_state.cedula_sel != "Todas":
     df_filtrado = df_filtrado[df_filtrado['CEDULA_FINAL'] == st.session_state.cedula_sel]
-if st.session_state.nombre_sel != "Todos":
+
+if isinstance(st.session_state.nombre_sel, list) and st.session_state.nombre_sel:
+    df_filtrado = df_filtrado[df_filtrado['NOMBRE SUPER VALIDADO'].isin(st.session_state.nombre_sel)]
+elif isinstance(st.session_state.nombre_sel, str) and st.session_state.nombre_sel != "Todos":
     df_filtrado = df_filtrado[df_filtrado['NOMBRE SUPER VALIDADO'] == st.session_state.nombre_sel]
 
 detalle_cols_base = [
@@ -905,24 +892,38 @@ with st.container(border=True):
     df_para_filtros = df_raw.copy()
     if st.session_state.mes_sel_draft:
         df_para_filtros = df_para_filtros[df_para_filtros['MES'].isin(st.session_state.mes_sel_draft)]
-    cedulas_disponibles = ["Todas"] + sorted(df_para_filtros['CEDULA_FINAL'].dropna().unique().tolist())
-    nombres_disponibles = ["Todos"] + sorted(df_para_filtros['NOMBRE SUPER VALIDADO'].dropna().unique().tolist())
-    if st.session_state.cedula_sel_draft not in cedulas_disponibles:
-        st.session_state.cedula_sel_draft = "Todas"
-    if st.session_state.nombre_sel_draft not in nombres_disponibles:
-        st.session_state.nombre_sel_draft = "Todos"
+    cedulas_disponibles = sorted(df_para_filtros['CEDULA_FINAL'].dropna().unique().tolist())
+    nombres_disponibles = sorted(df_para_filtros['NOMBRE SUPER VALIDADO'].dropna().unique().tolist())
 
     with c3:
         st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Cedula:</div>", unsafe_allow_html=True)
-        cedula_idx = cedulas_disponibles.index(st.session_state.cedula_sel_draft) if st.session_state.cedula_sel_draft in cedulas_disponibles else 0
-        cedula_sel_draft = st.selectbox("Cedula:", options=cedulas_disponibles, index=cedula_idx, key="cedula_sel_draft_widget", label_visibility="collapsed", on_change=on_change_cedula)
-        st.session_state.cedula_sel_draft = cedula_sel_draft
+        active_ced_keys = [k for k in st.session_state.keys() if k.startswith("cedula_sel_draft_widget_")]
+        num_ced_items = 0
+        if active_ced_keys:
+            val = st.session_state[active_ced_keys[0]]
+            if isinstance(val, list):
+                num_ced_items = len(val)
+                st.session_state.cedula_sel_draft = val
+        ced_key = f"cedula_sel_draft_widget_{num_ced_items}"
+        cur_ced_draft = st.session_state.cedula_sel_draft if isinstance(st.session_state.cedula_sel_draft, list) else []
+        default_cedulas = [c for c in cur_ced_draft if c in cedulas_disponibles]
+        cedulas_sel_draft = st.multiselect("Cedula:", options=cedulas_disponibles, default=default_cedulas, key=ced_key, placeholder="Todas", label_visibility="collapsed")
+        st.session_state.cedula_sel_draft = cedulas_sel_draft
 
     with c4:
         st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Supernumerario:</div>", unsafe_allow_html=True)
-        nombre_idx = nombres_disponibles.index(st.session_state.nombre_sel_draft) if st.session_state.nombre_sel_draft in nombres_disponibles else 0
-        nombre_sel_draft = st.selectbox("Supernumerario:", options=nombres_disponibles, index=nombre_idx, key="nombre_sel_draft_widget", label_visibility="collapsed", on_change=on_change_nombre)
-        st.session_state.nombre_sel_draft = nombre_sel_draft
+        active_nom_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
+        num_nom_items = 0
+        if active_nom_keys:
+            val = st.session_state[active_nom_keys[0]]
+            if isinstance(val, list):
+                num_nom_items = len(val)
+                st.session_state.nombre_sel_draft = val
+        nom_key = f"nombre_sel_draft_widget_{num_nom_items}"
+        cur_nom_draft = st.session_state.nombre_sel_draft if isinstance(st.session_state.nombre_sel_draft, list) else []
+        default_nombres = [n for n in cur_nom_draft if n in nombres_disponibles]
+        nombres_sel_draft = st.multiselect("Supernumerario:", options=nombres_disponibles, default=default_nombres, key=nom_key, placeholder="Todos", label_visibility="collapsed")
+        st.session_state.nombre_sel_draft = nombres_sel_draft
 
     with c5:
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
