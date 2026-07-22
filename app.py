@@ -509,7 +509,8 @@ custom_css = r"""
     div[data-testid="stSelectbox"] > div > div, div[data-testid="stMultiSelect"] > div > div {
         border: 1.5px solid #cccccc !important; background-color: #ffffff !important;
         border-radius: 6px !important; transition: border-color 0.2s ease-in-out !important;
-        min-height: 40px !important; max-height: 40px !important; }
+        min-height: 40px !important; max-height: 40px !important;
+        overflow-y: hidden !important; flex-wrap: nowrap !important; overflow-x: auto !important; }
     div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
         border-color: #1a73e8 !important; }
     .filter-panel-marker { display: none !important; }
@@ -700,7 +701,15 @@ def on_change_nombre():
     active_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
     if active_keys:
         val = st.session_state[active_keys[0]]
-        st.session_state.nombre_sel_draft = val if isinstance(val, list) else []
+        if isinstance(val, list):
+            if 'nombres_disponibles' in globals() or 'nombres_disponibles' in locals():
+                pass
+            if len(val) > 20:  # Si se seleccionaron casi todos / Select all
+                val = []
+                st.session_state[active_keys[0]] = []
+            st.session_state.nombre_sel_draft = val
+        else:
+            st.session_state.nombre_sel_draft = []
     st.session_state.nombre_sel = st.session_state.nombre_sel_draft
     st.session_state.mes_sel = st.session_state.mes_sel_draft
     st.session_state.cedula_sel = st.session_state.cedula_sel_draft
@@ -710,7 +719,13 @@ def on_change_cedula():
     active_keys = [k for k in st.session_state.keys() if k.startswith("cedula_sel_draft_widget_")]
     if active_keys:
         val = st.session_state[active_keys[0]]
-        st.session_state.cedula_sel_draft = val if isinstance(val, list) else []
+        if isinstance(val, list):
+            if len(val) > 20:  # Si se seleccionaron casi todos / Select all
+                val = []
+                st.session_state[active_keys[0]] = []
+            st.session_state.cedula_sel_draft = val
+        else:
+            st.session_state.cedula_sel_draft = []
     st.session_state.cedula_sel = st.session_state.cedula_sel_draft
     st.session_state.mes_sel = st.session_state.mes_sel_draft
     st.session_state.nombre_sel = st.session_state.nombre_sel_draft
@@ -923,6 +938,9 @@ with st.container(border=True):
         if active_ced_keys:
             val = st.session_state[active_ced_keys[0]]
             if isinstance(val, list):
+                if len(cedulas_disponibles) > 0 and len(val) >= len(cedulas_disponibles):
+                    val = []
+                    st.session_state[active_ced_keys[0]] = []
                 num_ced_items = len(val)
                 st.session_state.cedula_sel_draft = val
         ced_key = f"cedula_sel_draft_widget_{num_ced_items}"
@@ -938,6 +956,9 @@ with st.container(border=True):
         if active_nom_keys:
             val = st.session_state[active_nom_keys[0]]
             if isinstance(val, list):
+                if len(nombres_disponibles) > 0 and len(val) >= len(nombres_disponibles):
+                    val = []
+                    st.session_state[active_nom_keys[0]] = []
                 num_nom_items = len(val)
                 st.session_state.nombre_sel_draft = val
         nom_key = f"nombre_sel_draft_widget_{num_nom_items}"
