@@ -863,7 +863,7 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6 = st.columns([1.2, 1.4, 2.6, 0.45, 0.45, 0.45], gap="small")
+    c1, c2, c3, c4, c5, c6, _ = st.columns([1.2, 1.4, 2.2, 0.4, 0.4, 0.4, 3.8], gap="small")
 
     with c1:
         st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
