@@ -688,14 +688,16 @@ def clear_cedula():
         if k.startswith("cedula_sel_draft_widget_"):
             del st.session_state[k]
 
-def clear_nombre():
+def clear_super_y_mes():
     st.session_state.nombre_sel = []
     st.session_state.nombre_sel_draft = []
-    st.session_state.cedula_sel = []
-    st.session_state.cedula_sel_draft = []
+    st.session_state.mes_sel = []
+    st.session_state.mes_sel_draft = []
     for k in list(st.session_state.keys()):
-        if k.startswith("nombre_sel_draft_widget_") or k.startswith("cedula_sel_draft_widget_"):
+        if k.startswith("nombre_sel_draft_widget_") or k.startswith("mes_sel_draft_widget_"):
             del st.session_state[k]
+
+clear_nombre = clear_super_y_mes
 
 def on_change_nombre():
     active_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
@@ -981,7 +983,7 @@ with st.container(border=True):
     with c6:
         st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="clear-btn">', unsafe_allow_html=True)
-        st.button("Borrar Filtro Supernumerario", key="btn_clear", help="Borrar filtro Supernumerario", use_container_width=True, on_click=clear_nombre)
+        st.button("Borrar Filtros Supernumerario y Mes", key="btn_clear", help="Borrar filtros de Supernumerario y Mes", use_container_width=True, on_click=clear_super_y_mes)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c7:
