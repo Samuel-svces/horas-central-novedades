@@ -475,19 +475,19 @@ custom_css = r"""
     .element-container:has(.clear-btn) + .element-container button {
         background-color: #ffffff !important; color: #d93025 !important;
         border: 1.5px solid #d93025 !important; width: 100%; height: 40px;
-        margin-top: 24px !important; font-weight: 600; transition: all 0.2s ease; }
+        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.clear-btn) + .element-container button:hover {
         background-color: #d93025 !important; color: #ffffff !important; }
     .element-container:has(.export-btn) + .element-container button {
         background-color: #ffffff !important; color: #1e8e3e !important;
         border: 1.5px solid #1e8e3e !important; width: 100%; height: 40px;
-        margin-top: 24px !important; font-weight: 600; transition: all 0.2s ease; }
+        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.export-btn) + .element-container button:hover {
         background-color: #1e8e3e !important; color: #ffffff !important; }
     .element-container:has(.search-btn) + .element-container button {
         background-color: #ffffff !important; color: #1a73e8 !important;
         border: 1.5px solid #1a73e8 !important; width: 100%; height: 40px;
-        margin-top: 24px !important; font-weight: 600; transition: all 0.2s ease; }
+        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.search-btn) + .element-container button:hover {
         background-color: #1a73e8 !important; color: #ffffff !important; }
     .totals-inline-bar { display: flex !important; justify-content: center !important;
@@ -906,15 +906,17 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 3.4, 1.0, 1.0, 1.0])
+    c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 3.6, 1.0, 1.0, 1.0])
 
     with c1:
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Agrupar por:</div>", unsafe_allow_html=True)
         agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
-        agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget")
+        agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget", label_visibility="collapsed")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
 
     with c2:
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Mes:</div>", unsafe_allow_html=True)
         active_keys = [k for k in st.session_state.keys() if k.startswith("mes_sel_draft_widget_")]
         num_items = 0
         if active_keys:
@@ -924,7 +926,7 @@ with st.container(border=True):
                 st.session_state.mes_sel_draft = val
         mes_key = f"mes_sel_draft_widget_{num_items}"
         default_meses = [m for m in st.session_state.mes_sel_draft if m in meses_disponibles]
-        meses_sel_draft = st.multiselect("Mes:", options=meses_disponibles, default=default_meses, key=mes_key, placeholder="Seleccionar...")
+        meses_sel_draft = st.multiselect("Mes:", options=meses_disponibles, default=default_meses, key=mes_key, placeholder="Seleccionar...", label_visibility="collapsed")
         st.session_state.mes_sel_draft = meses_sel_draft
 
     df_para_filtros = df_raw.copy()
@@ -938,13 +940,14 @@ with st.container(border=True):
         st.session_state.nombre_sel_draft = "Todos"
 
     with c3:
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Cedula:</div>", unsafe_allow_html=True)
         cedula_idx = cedulas_disponibles.index(st.session_state.cedula_sel_draft) if st.session_state.cedula_sel_draft in cedulas_disponibles else 0
-        cedula_sel_draft = st.selectbox("Cedula:", options=cedulas_disponibles, index=cedula_idx, key="cedula_sel_draft_widget", on_change=on_change_cedula)
+        cedula_sel_draft = st.selectbox("Cedula:", options=cedulas_disponibles, index=cedula_idx, key="cedula_sel_draft_widget", label_visibility="collapsed", on_change=on_change_cedula)
         st.session_state.cedula_sel_draft = cedula_sel_draft
 
     with c4:
-        st.markdown("<div style='font-size:14px; font-weight:500; color:#202124; margin-bottom:4px;'>Supernumerario:</div>", unsafe_allow_html=True)
-        c_sel, c_del = st.columns([0.80, 0.20])
+        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Supernumerario:</div>", unsafe_allow_html=True)
+        c_sel, c_del = st.columns([0.82, 0.18], gap="small")
         with c_sel:
             nombre_idx = nombres_disponibles.index(st.session_state.nombre_sel_draft) if st.session_state.nombre_sel_draft in nombres_disponibles else 0
             nombre_sel_draft = st.selectbox("Supernumerario:", options=nombres_disponibles, index=nombre_idx, key="nombre_sel_draft_widget", label_visibility="collapsed", on_change=on_change_nombre)
