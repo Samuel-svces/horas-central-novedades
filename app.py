@@ -509,19 +509,23 @@ custom_css = r"""
     div[data-testid="stSelectbox"] > div > div, div[data-testid="stMultiSelect"] > div > div {
         border: 1.5px solid #cccccc !important; background-color: #ffffff !important;
         border-radius: 6px !important; transition: border-color 0.2s ease-in-out !important;
-        min-height: 34px !important; max-height: 34px !important; font-size: 12.5px !important;
+        min-height: 36px !important; max-height: 36px !important; font-size: 12.5px !important;
         overflow-y: hidden !important; flex-wrap: nowrap !important; overflow-x: auto !important; }
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-        height: 22px !important; font-size: 11.5px !important; margin-top: 0px !important; margin-bottom: 0px !important; }
+        height: 24px !important; max-width: none !important; margin-top: 0px !important; margin-bottom: 0px !important;
+        background-color: #ff4b4b !important; color: #ffffff !important; border-radius: 6px !important; }
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] span {
+        max-width: none !important; white-space: nowrap !important; overflow: visible !important;
+        text-overflow: clip !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important; }
     div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
         border-color: #1a73e8 !important; }
     .filter-panel-marker { display: none !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
         border: 1.5px solid #cccccc !important; border-radius: 8px !important;
-        background-color: #ffffff !important; padding: 10px 14px !important;
+        background-color: #ffffff !important; padding: 12px 16px !important;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; margin-bottom: 16px !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important; gap: 8px !important; align-items: flex-end !important; }
+        flex-wrap: nowrap !important; gap: 10px !important; align-items: flex-end !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
     .table-scroll-container { max-height: 420px; overflow-y: auto; overflow-x: auto;
         border: 1.5px solid #cccccc; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -863,7 +867,7 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6, _ = st.columns([1.2, 1.4, 2.2, 0.4, 0.4, 0.4, 3.8], gap="small")
+    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1.8, 3.8, 0.5, 0.5, 0.5], gap="small")
 
     with c1:
         st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
