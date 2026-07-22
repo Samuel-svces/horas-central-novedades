@@ -506,35 +506,42 @@ custom_css = r"""
     .badge-green { background-color: #137333 !important; }
     .badge-yellow { background-color: #f9ab00 !important; }
     .badge-red { background-color: #d93025 !important; }
-    div[data-testid="stSelectbox"] > div > div, div[data-testid="stMultiSelect"] > div > div {
-        border: 1.5px solid #cccccc !important; background-color: #ffffff !important;
-        border-radius: 6px !important; transition: border-color 0.2s ease-in-out !important;
-        min-height: 38px !important; max-height: 38px !important; height: 38px !important; font-size: 12.5px !important;
-        padding-top: 2px !important; padding-bottom: 2px !important; padding-left: 6px !important; padding-right: 6px !important;
-        display: flex !important; align-items: center !important;
-        overflow: hidden !important; flex-wrap: nowrap !important; }
-    div[data-testid="stMultiSelect"] div[data-baseweb="select"] > div {
-        padding-top: 0px !important; padding-bottom: 0px !important; min-height: 32px !important; max-height: 32px !important;
-        display: flex !important; align-items: center !important; }
+    /* ── Selectbox (dropdown simple) ─────────────────────────────────── */
+    div[data-testid="stSelectbox"] > div > div {
+        border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
+        border-radius: 6px !important; transition: border-color 0.2s ease !important;
+        min-height: 38px !important; height: 38px !important; font-size: 13px !important;
+        padding: 0 10px !important; display: flex !important; align-items: center !important; }
+    div[data-testid="stSelectbox"] > div > div:hover { border-color: #1a73e8 !important; }
+    /* ── Multiselect (contenedor externo) ──────────────────────────────── */
+    div[data-testid="stMultiSelect"] > div > div {
+        border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
+        border-radius: 6px !important; transition: border-color 0.2s ease !important;
+        min-height: 38px !important; font-size: 13px !important;
+        padding: 4px 8px !important; display: flex !important; align-items: center !important;
+        flex-wrap: wrap !important; gap: 4px !important;
+        overflow: visible !important; height: auto !important; max-height: none !important; }
+    div[data-testid="stMultiSelect"] > div > div:hover { border-color: #1a73e8 !important; }
+    /* ── Tags (etiquetas de selección) ─────────────────────────────────── */
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-        height: 24px !important; max-height: 24px !important; line-height: 24px !important;
-        margin-top: 0px !important; margin-bottom: 0px !important; margin-left: 2px !important; margin-right: 2px !important;
-        padding-top: 0px !important; padding-bottom: 0px !important; padding-left: 8px !important; padding-right: 6px !important;
-        background-color: #ff4b4b !important; color: #ffffff !important; border-radius: 4px !important;
+        background-color: #e8eaf6 !important; border: 1px solid #c5cae9 !important;
+        border-radius: 4px !important; height: auto !important; max-height: none !important;
+        padding: 2px 6px 2px 8px !important; margin: 0 !important;
         display: inline-flex !important; align-items: center !important; }
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] span {
-        max-width: none !important; white-space: nowrap !important; overflow: visible !important;
-        text-overflow: clip !important; font-size: 11.5px !important; font-weight: 600 !important; color: #ffffff !important;
-        line-height: 1 !important; }
-    div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
-        border-color: #1a73e8 !important; }
+        color: #1a237e !important; font-size: 12px !important; font-weight: 600 !important;
+        white-space: nowrap !important; overflow: visible !important; max-width: none !important;
+        line-height: 1.4 !important; }
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] [data-testid="stMultiSelectDeleteTag"] svg {
+        fill: #5c6bc0 !important; }
+    /* ── Panel de filtros ──────────────────────────────────────────────── */
     .filter-panel-marker { display: none !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
-        border: 1.5px solid #cccccc !important; border-radius: 8px !important;
-        background-color: #ffffff !important; padding: 12px 16px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; margin-bottom: 16px !important; }
+        border: 1.5px solid #e2e8f0 !important; border-radius: 10px !important;
+        background-color: #fafbff !important; padding: 14px 18px !important;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important; margin-bottom: 16px !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
-        flex-wrap: nowrap !important; gap: 10px !important; align-items: flex-end !important; }
+        flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
     .table-scroll-container { max-height: 420px; overflow-y: auto; overflow-x: auto;
         border: 1.5px solid #cccccc; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -876,7 +883,7 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 1.8, 3.8, 0.5, 0.5, 0.5], gap="small")
+    c1, c2, c3, c4, c5, c6 = st.columns([3, 3, 3, 0.6, 0.6, 0.6], gap="small")
 
     with c1:
         st.markdown("<div style='font-size:12px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
