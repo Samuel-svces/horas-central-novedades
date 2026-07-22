@@ -510,35 +510,39 @@ custom_css = r"""
     div[data-testid="stSelectbox"] > div > div {
         border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
         border-radius: 6px !important; transition: border-color 0.2s ease !important;
-        min-height: 38px !important; height: 38px !important; font-size: 13px !important;
-        padding: 0 10px !important; display: flex !important; align-items: center !important; }
+        height: 38px !important; min-height: 38px !important; max-height: 38px !important;
+        font-size: 13px !important; padding: 0 10px !important;
+        display: flex !important; align-items: center !important;
+        overflow: hidden !important; }
     div[data-testid="stSelectbox"] > div > div:hover { border-color: #1a73e8 !important; }
-    /* ── Multiselect (contenedor externo) ──────────────────────────────── */
+    /* ── Multiselect: contenedor de altura fija con scroll horizontal ── */
     div[data-testid="stMultiSelect"] > div > div {
         border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
         border-radius: 6px !important; transition: border-color 0.2s ease !important;
-        min-height: 38px !important; font-size: 13px !important;
-        padding: 4px 8px !important; display: flex !important; align-items: center !important;
-        flex-wrap: wrap !important; gap: 4px !important;
-        overflow: visible !important; height: auto !important; max-height: none !important; }
+        height: 38px !important; min-height: 38px !important; max-height: 38px !important;
+        font-size: 13px !important; padding: 0 8px !important;
+        display: flex !important; align-items: center !important;
+        flex-wrap: nowrap !important; gap: 4px !important;
+        overflow-x: auto !important; overflow-y: hidden !important;
+        scrollbar-width: none !important; }
+    div[data-testid="stMultiSelect"] > div > div::-webkit-scrollbar { display: none !important; }
     div[data-testid="stMultiSelect"] > div > div:hover { border-color: #1a73e8 !important; }
-    /* ── Tags (etiquetas de selección) ─────────────────────────────────── */
+    /* ── Tags: una sola línea, texto negro, no se expanden ──────────── */
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-        background-color: #e8eaf6 !important; border: 1px solid #c5cae9 !important;
-        border-radius: 4px !important; height: auto !important; max-height: none !important;
-        padding: 2px 6px 2px 8px !important; margin: 0 !important;
+        background-color: #eef2ff !important; border: 1px solid #c7d2fe !important;
+        border-radius: 4px !important; flex-shrink: 0 !important;
+        height: 26px !important; min-height: 26px !important; max-height: 26px !important;
+        padding: 0 6px 0 8px !important; margin: 0 !important;
         display: inline-flex !important; align-items: center !important; }
     div[data-testid="stMultiSelect"] span[data-baseweb="tag"] span {
-        color: #1a237e !important; font-size: 12px !important; font-weight: 600 !important;
-        white-space: nowrap !important; overflow: visible !important; max-width: none !important;
-        line-height: 1.4 !important; }
-    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] [data-testid="stMultiSelectDeleteTag"] svg {
-        fill: #5c6bc0 !important; }
+        color: #1e1b4b !important; font-size: 12px !important; font-weight: 600 !important;
+        white-space: nowrap !important; line-height: 1 !important; }
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] svg { fill: #6366f1 !important; }
     /* ── Panel de filtros ──────────────────────────────────────────────── */
     .filter-panel-marker { display: none !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
         border: 1.5px solid #e2e8f0 !important; border-radius: 10px !important;
-        background-color: #fafbff !important; padding: 14px 18px !important;
+        background-color: #f8faff !important; padding: 14px 18px !important;
         box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important; margin-bottom: 16px !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
