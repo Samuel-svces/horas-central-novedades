@@ -122,12 +122,16 @@ def cargar_desde_onedrive():
                         st.warning(f"Error cargando archivo historico: {e}")
                 
                 if df_raw_historico is not None and not df_raw_historico.empty:
-                    # De enero a junio (MES_NUM <= 6) se lee del histórico
-                    df_raw_historico = df_raw_historico[df_raw_historico['MES_NUM'] <= 6]
-                    # De julio en adelante (MES_NUM >= 7) se lee del actual
-                    df_raw_actual = df_raw_actual[df_raw_actual['MES_NUM'] >= 7]
-                    
-                    st.session_state.df_raw = __import__('pandas').concat([df_raw_historico, df_raw_actual], ignore_index=True)
+                    # Leer ambos archivos completos — sin filtro por mes.
+                    # Los meses que estén en el archivo actual tienen prioridad
+                    # (se eliminan del histórico si ya existen en el actual).
+                    meses_en_actual = set(df_raw_actual['MES_NUM'].dropna().unique())
+                    df_raw_historico = df_raw_historico[
+                        ~df_raw_historico['MES_NUM'].isin(meses_en_actual)
+                    ]
+                    st.session_state.df_raw = __import__('pandas').concat(
+                        [df_raw_historico, df_raw_actual], ignore_index=True
+                    )
                     st.session_state.hist_loaded = True
                 else:
                     st.session_state.df_raw = df_raw_actual
