@@ -927,6 +927,7 @@ with st.container(border=True):
         st.session_state.nombre_sel_draft = nombres_sel_draft
 
     with c5:
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
         if st.button("Buscar", key="btn_search", use_container_width=True):
             st.session_state.mes_sel = st.session_state.mes_sel_draft
@@ -937,11 +938,13 @@ with st.container(border=True):
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c6:
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="clear-btn">', unsafe_allow_html=True)
         st.button("Borrar Filtro Supernumerario", key="btn_clear", help="Borrar filtro Supernumerario", use_container_width=True, on_click=clear_nombre)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c7:
+        st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="export-btn">', unsafe_allow_html=True)
         cols_to_export_det = [c for c in detalle_cols_base if c in df_filtrado.columns]
         daily_targets = st.session_state.get('daily_targets', {})
