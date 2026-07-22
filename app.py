@@ -190,6 +190,8 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
     if 'HORAS_A_LABORAR' in df_grouped.columns:
         return df_grouped['HORAS_A_LABORAR'].tolist()
     targets = []
+    restr_dict = dp.get_restriction_dict(df_ref=df_raw_filtered, df_super=df_super)
+
     for idx, row in df_grouped.iterrows():
         doc_name = row['NOMBRE SUPER VALIDADO']
         month_num = row['MES_NUM']
@@ -201,7 +203,7 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
             (df_raw_filtered['NOMBRE SUPER VALIDADO'] == doc_name) &
             (df_raw_filtered['MES_NUM'] == month_num)
         ]
-        
+
         # Intentar determinar el primer y último turno basándonos en la hoja de supernumerarios
         found_in_super = False
         if df_super is not None and not df_super.empty:
@@ -214,41 +216,52 @@ def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, mo
                 max_date = super_entries['FECHA_CLEAN'].max()
                 min_date = super_entries['FECHA_CLEAN'].min()
                 found_in_super = True
-        
+
         if not found_in_super:
             max_date = doc_entries['FECHA_CLEAN'].max()
             min_date = doc_entries['FECHA_CLEAN'].min()
-            
+
         if pd.notna(max_date) and pd.notna(min_date):
-            # Si el médico trabajó/estuvo en la primera semana y en la última semana del mes,
-            # se considera activo todo el mes y se le asigna la meta mensual completa.
-            if min_date.day <= 7 and max_date.day >= (max_date.days_in_month - 6):
+            doc_norm = dp.normalize_name(doc_name)
+            # Verificar si tiene días de licencia/permiso en el mes
+            has_leave_days = any(
+                dp.is_unpaid_leave_or_permission(v)
+                for (d_norm, f_date), v in restr_dict.items()
+                if d_norm == doc_norm and f_date.month == month_num
+            )
+
+            # Si el médico estuvo activo todo el mes Y NO tiene licencias no remuneradas/permisos,
+            # se le asigna la meta mensual completa.
+            if min_date.day <= 7 and max_date.day >= (max_date.days_in_month - 6) and not has_leave_days:
                 m_target = monthly_targets.get(month_num, 0)
                 if doc_name == 'SEBASTIAN GIL GALLEGO':
                     targets.append(int(round((m_target / 7.0) * 7.33)))
                 else:
                     targets.append(int(round(m_target)))
                 continue
-                
-            # Usar directamente la fecha de inicio y fin real sin alinear al inicio/fin de la semana
+
+            # Suma de metas día a día excluyendo licencias/permisos
             min_date_aligned = min_date
             max_date_aligned = max_date
-            
+
             target_sum = 0
             curr = min_date_aligned
             today_date = get_local_now().date()
             while curr <= max_date_aligned:
-                # Solo contar los días que pertenecen al mes que se está calculando
                 if curr.month == month_num:
-                    # Omitir días futuros si no hay novedades registradas ese día
                     if curr.date() > today_date:
                         day_entries = doc_entries[doc_entries['FECHA_CLEAN'].dt.date == curr.date()]
                         if day_entries.empty:
                             curr += pd.Timedelta(days=1)
                             continue
-                            
+
                     date_str = curr.strftime('%d/%m/%Y')
                     val = daily_targets.get(date_str, 0)
+
+                    restr_text = restr_dict.get((doc_norm, curr.date()))
+                    if restr_text and dp.is_unpaid_leave_or_permission(restr_text):
+                        val = 0.0
+
                     if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
                         target_sum += 7.33
                     else:

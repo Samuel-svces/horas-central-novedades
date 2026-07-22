@@ -406,7 +406,64 @@ def load_and_clean_data(file_source):
     if 'DOCUMENTO' in df.columns:
         df['DOCUMENTO'] = df['DOCUMENTO'].apply(clean_cedula_val)
 
+    # 9. Extraer columna de restricciones / licencias (Hora Fin Restriccion)
+    col_restr = None
+    for col in df.columns:
+        col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        if any(k in col_norm for k in ['HORA FIN RESTRICCION', 'RESTRICCION', 'RESTRICION', 'FIN RESTRICCION']):
+            col_restr = col
+            break
+
+    if col_restr:
+        df['RESTRICCION'] = df[col_restr].fillna('').astype(str).str.strip()
+    else:
+        df['RESTRICCION'] = ''
+
     return df
+
+
+def is_unpaid_leave_or_permission(val):
+    """
+    Verifica si el valor de 'Hora Fin Restriccion' contiene alguna de las palabras clave:
+    'LICENCIA NO REMUNERADA', 'PERMISO', 'LICENCIA' (excluyendo 'LICENCIA REMUNERADA').
+    """
+    if pd.isna(val):
+        return False
+    val_str = str(val).strip().upper()
+    val_str = val_str.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+    if not val_str or val_str in ['NAN', 'NONE', 'NULL', '']:
+        return False
+    if 'LICENCIA REMUNERADA' in val_str and 'NO REMUNERADA' not in val_str:
+        return False
+    keywords = ['LICENCIA NO REMUNERADA', 'PERMISO', 'LICENCIA']
+    return any(kw in val_str for kw in keywords)
+
+
+def get_restriction_dict(df_ref=None, df_super=None):
+    """
+    Construye un diccionario {(doc_norm, fecha_date): text_restriccion}
+    para rápida búsqueda de licencias/permisos no remunerados por médico y fecha.
+    """
+    restr_dict = {}
+
+    if df_super is not None and not df_super.empty and 'RESTRICCION' in df_super.columns:
+        for _, r in df_super.iterrows():
+            f_clean = r.get('FECHA_CLEAN')
+            doc_norm = r.get('NOMBRE_NORM')
+            restr_val = r.get('RESTRICCION')
+            if pd.notna(f_clean) and pd.notna(doc_norm) and is_unpaid_leave_or_permission(restr_val):
+                restr_dict[(doc_norm, f_clean.date())] = str(restr_val).strip()
+
+    if df_ref is not None and not df_ref.empty and 'RESTRICCION' in df_ref.columns:
+        for _, r in df_ref.iterrows():
+            f_clean = r.get('FECHA_CLEAN')
+            doc_name = r.get('NOMBRE SUPER VALIDADO')
+            restr_val = r.get('RESTRICCION')
+            if pd.notna(f_clean) and pd.notna(doc_name) and is_unpaid_leave_or_permission(restr_val):
+                doc_norm = normalize_name(doc_name)
+                restr_dict[(doc_norm, f_clean.date())] = str(restr_val).strip()
+
+    return restr_dict
 
 
 def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_unfiltered=None, plaza_fija_dates=None):
@@ -478,43 +535,45 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
     medicos_meses = pd.DataFrame(active_combos)
     daily_rows = []
     
+    restr_dict = get_restriction_dict(df_ref=df_ref, df_super=df_super)
+
     for idx, row in medicos_meses.iterrows():
         cedula = row['CEDULA_FINAL']
         doc_name = row['NOMBRE SUPER VALIDADO']
         month_name = row['MES']
         month_num = row['MES_NUM']
-        
+
         if pd.isna(month_num):
             continue
         month_num = int(month_num)
-        
+
         # 1. Buscar todas las fechas de novedades del médico en todo el año (df_ref)
         all_doc_dates = df_ref[df_ref['NOMBRE SUPER VALIDADO'] == doc_name]['FECHA_CLEAN'].dropna().tolist()
-        
+
         # 2. Buscar todas las fechas en las hojas de supernumerarios (df_super) en todo el año
         if df_super is not None and not df_super.empty:
             doc_norm = normalize_name(doc_name)
             super_dates = df_super[df_super['NOMBRE_NORM'] == doc_norm]['FECHA_CLEAN'].dropna().tolist()
             all_doc_dates.extend(super_dates)
-            
+
         # 3. Determinar min_date y max_date del mes, pero expandiendo si hay actividad en otros meses
         if all_doc_dates:
             all_doc_dates = pd.to_datetime(all_doc_dates)
             abs_min = all_doc_dates.min()
             abs_max = all_doc_dates.max()
-            
+
             # Fechas por defecto para este mes específico
             doc_entries_month = df[(df['NOMBRE SUPER VALIDADO'] == doc_name) & (df['MES_NUM'] == month_num)]
             month_min = doc_entries_month['FECHA_CLEAN'].min()
             month_max = doc_entries_month['FECHA_CLEAN'].max()
-            
+
             if df_super is not None and not df_super.empty:
                 doc_norm = normalize_name(doc_name)
                 super_entries_month = df_super[(df_super['NOMBRE_NORM'] == doc_norm) & (df_super['FECHA_CLEAN'].dt.month == month_num)]
                 if not super_entries_month.empty:
                     month_min = min(month_min, super_entries_month['FECHA_CLEAN'].min()) if pd.notna(month_min) else super_entries_month['FECHA_CLEAN'].min()
                     month_max = max(month_max, super_entries_month['FECHA_CLEAN'].max()) if pd.notna(month_max) else super_entries_month['FECHA_CLEAN'].max()
-            
+
             # Si no hay registros en este mes, no tiene periodo activo este mes
             if pd.isna(month_min) or pd.isna(month_max):
                 min_date_aligned = pd.NaT
@@ -525,7 +584,7 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                     min_date_aligned = pd.Timestamp(year=2026, month=month_num, day=1)
                 else:
                     min_date_aligned = month_min
-                    
+
                 # Si tiene registros en meses POSTERIORES, asumimos que está activo hasta el último día de este mes
                 days_in_month = pd.Period(f"2026-{month_num:02d}").days_in_month
                 if abs_max.month > month_num or abs_max.year > 2026:
@@ -539,7 +598,7 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
         else:
             min_date_aligned = pd.NaT
             max_date_aligned = pd.NaT
-            
+
         # 4. Ajustar por fecha de traslado a plaza fija (si existe)
         if plaza_fija_dates:
             doc_norm = normalize_name(doc_name)
@@ -552,12 +611,12 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                     max_date_aligned = min(max_date_aligned, target_limit)
                 else:
                     max_date_aligned = target_limit
-            
+
         if pd.notna(min_date_aligned) and pd.notna(max_date_aligned):
             # Obtener fecha actual en Colombia (UTC-5)
             from datetime import datetime, timezone, timedelta
             today_dt = datetime.now(timezone(timedelta(hours=-5))).date()
-            
+
             curr = min_date_aligned
             while curr <= max_date_aligned:
                 if curr.month == month_num:
@@ -568,26 +627,30 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                     else:
                         horas_trabajadas = 0.0
                         novedades = 0
-                        
+
                     # Omitir días futuros si no hay novedades registradas ese día
                     if curr.date() > today_dt and horas_trabajadas == 0:
                         curr += pd.Timedelta(days=1)
                         continue
-                        
+
                     val = daily_targets.get(date_str, 0)
                     if doc_name == 'SEBASTIAN GIL GALLEGO' and val == 7:
                         horas_a_laborar = 7.33
                     else:
                         horas_a_laborar = val
-                        
-                    # Si es sábado (dayofweek == 5) y no registró horas trabajadas (0.0),
-                    # se considera que es su descanso. Su meta de horas a laborar se mantiene en 7 (o 7.33)
-                    # y el estado se establece como "Descanso".
-                    if curr.dayofweek == 5 and horas_trabajadas == 0.0:
+
+                    # Verificar restricciones (Licencia no remunerada, Permiso)
+                    doc_norm = normalize_name(doc_name)
+                    restr_text = restr_dict.get((doc_norm, curr.date()))
+
+                    if restr_text and is_unpaid_leave_or_permission(restr_text):
+                        horas_a_laborar = 0.0
+                        estado = restr_text.upper()
+                    elif curr.dayofweek == 5 and horas_trabajadas == 0.0:
                         estado = "Descanso"
                     else:
                         estado = ""
-                        
+
                     daily_rows.append({
                         'FECHA_CLEAN': curr,
                         'FECHA_STR': date_str,
@@ -601,12 +664,12 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                         'ESTADO': estado
                     })
                 curr += pd.Timedelta(days=1)
-                
+
     df_res = pd.DataFrame(daily_rows)
     if not df_res.empty:
-        # Filtrar días no laborados que no tienen horas a laborar (ej. domingos y festivos sin novedades),
-        # pero conservar aquellos que son de "Descanso" (sábados no laborados).
-        df_res = df_res[~((df_res['HORAS_TOTALES'] == 0) & (df_res['HORAS_A_LABORAR'] == 0) & (df_res['ESTADO'] != 'Descanso'))]
+        # Filtrar días no laborados sin horas a laborar (ej. domingos/festivos sin novedades),
+        # pero conservar aquellos con estado específico (ej. Descanso, Licencia No Remunerada, Permiso).
+        df_res = df_res[~((df_res['HORAS_TOTALES'] == 0) & (df_res['HORAS_A_LABORAR'] == 0) & (df_res['ESTADO'] == ''))]
     return df_res
 
 
@@ -846,21 +909,28 @@ def load_supernumerario_sheets(file_source):
                 df = pd.read_excel(xl, sheet_name=sheet)
                 df.columns = [str(col).strip() for col in df.columns]
 
-                # Buscar columnas Fecha y Nombre
+                # Buscar columnas Fecha, Nombre y Restricción
                 col_fecha = None
                 col_nombre = None
+                col_restr = None
                 for col in df.columns:
-                    col_norm = col.upper()
+                    col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
                     if col_norm == 'FECHA':
                         col_fecha = col
                     elif col_norm in ['NOMBRE', 'NOMBRE SUPERNUMERARIO', 'MEDICO']:
                         col_nombre = col
+                    elif any(k in col_norm for k in ['HORA FIN RESTRICCION', 'RESTRICCION', 'RESTRICION', 'FIN RESTRICCION']):
+                        col_restr = col
 
                 if col_fecha and col_nombre:
                     df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
                     df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
                     df['MES_NUM'] = df['FECHA_CLEAN'].dt.month
-                    all_dfs.append(df[['FECHA_CLEAN', 'NOMBRE_NORM', 'MES_NUM']].dropna(subset=['FECHA_CLEAN', 'NOMBRE_NORM']))
+                    if col_restr:
+                        df['RESTRICCION'] = df[col_restr].fillna('').astype(str).str.strip()
+                    else:
+                        df['RESTRICCION'] = ''
+                    all_dfs.append(df[['FECHA_CLEAN', 'NOMBRE_NORM', 'MES_NUM', 'RESTRICCION']].dropna(subset=['FECHA_CLEAN', 'NOMBRE_NORM']))
 
             # 2. Buscar hojas por mes individual (SUPERNUMERARIOS {MES})
             for sheet in sheet_names:
@@ -875,21 +945,28 @@ def load_supernumerario_sheets(file_source):
                 df = pd.read_excel(xl, sheet_name=sheet)
                 df.columns = [str(col).strip() for col in df.columns]
 
-                # Buscar columnas Fecha y Nombre
+                # Buscar columnas Fecha, Nombre y Restricción
                 col_fecha = None
                 col_nombre = None
+                col_restr = None
                 for col in df.columns:
-                    col_norm = col.upper()
+                    col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
                     if col_norm == 'FECHA':
                         col_fecha = col
                     elif col_norm in ['NOMBRE', 'NOMBRE SUPERNUMERARIO', 'MEDICO']:
                         col_nombre = col
+                    elif any(k in col_norm for k in ['HORA FIN RESTRICCION', 'RESTRICCION', 'RESTRICION', 'FIN RESTRICCION']):
+                        col_restr = col
 
                 if col_fecha and col_nombre:
                     df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
                     df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
                     df['MES_NUM'] = month_num
-                    all_dfs.append(df[['FECHA_CLEAN', 'NOMBRE_NORM', 'MES_NUM']].dropna(subset=['FECHA_CLEAN', 'NOMBRE_NORM']))
+                    if col_restr:
+                        df['RESTRICCION'] = df[col_restr].fillna('').astype(str).str.strip()
+                    else:
+                        df['RESTRICCION'] = ''
+                    all_dfs.append(df[['FECHA_CLEAN', 'NOMBRE_NORM', 'MES_NUM', 'RESTRICCION']].dropna(subset=['FECHA_CLEAN', 'NOMBRE_NORM']))
 
             if all_dfs:
                 return pd.concat(all_dfs, ignore_index=True)
