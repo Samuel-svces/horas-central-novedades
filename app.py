@@ -529,6 +529,15 @@ custom_css = r"""
         scrollbar-width: none !important; }
     div[data-testid="stMultiSelect"] > div > div::-webkit-scrollbar { display: none !important; }
     div[data-testid="stMultiSelect"] > div > div:hover { border-color: #1a73e8 !important; }
+    div[data-testid="stMultiSelect"] > div > div:focus-within,
+    div[data-testid="stMultiSelect"] > div > div:focus,
+    div[data-testid="stMultiSelect"] > div > div[aria-expanded="true"] {
+        border-color: #1a73e8 !important; box-shadow: 0 0 0 2px rgba(26,115,232,0.15) !important; outline: none !important; }
+    div[data-testid="stSelectbox"] > div > div:focus-within,
+    div[data-testid="stSelectbox"] > div > div:focus {
+        border-color: #1a73e8 !important; box-shadow: 0 0 0 2px rgba(26,115,232,0.15) !important; outline: none !important; }
+    div[data-testid="stMultiSelect"] * { outline: none !important; }
+    div[data-testid="stMultiSelect"] [data-baseweb="select"] { border: none !important; box-shadow: none !important; }
     div[data-testid="stMultiSelect"] [data-baseweb="select"],
     div[data-testid="stMultiSelect"] [data-baseweb="select"] > div { background-color: #ffffff !important; }
     /* ── Tags: texto completo sin truncar, fondo claro, letra negra ──── */
