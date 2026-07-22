@@ -474,20 +474,20 @@ custom_css = r"""
         font-size: 18px !important; visibility: visible !important; color: inherit !important; }
     .element-container:has(.clear-btn) + .element-container button {
         background-color: #ffffff !important; color: #d93025 !important;
-        border: 1.5px solid #d93025 !important; width: 100%; height: 40px;
-        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
+        border: 1.5px solid #d93025 !important; width: 100% !important; max-width: 52px !important; height: 40px !important;
+        margin-top: 0px !important; margin-left: auto !important; margin-right: auto !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.clear-btn) + .element-container button:hover {
         background-color: #d93025 !important; color: #ffffff !important; }
     .element-container:has(.export-btn) + .element-container button {
         background-color: #ffffff !important; color: #1e8e3e !important;
-        border: 1.5px solid #1e8e3e !important; width: 100%; height: 40px;
-        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
+        border: 1.5px solid #1e8e3e !important; width: 100% !important; max-width: 52px !important; height: 40px !important;
+        margin-top: 0px !important; margin-left: auto !important; margin-right: auto !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.export-btn) + .element-container button:hover {
         background-color: #1e8e3e !important; color: #ffffff !important; }
     .element-container:has(.search-btn) + .element-container button {
         background-color: #ffffff !important; color: #1a73e8 !important;
-        border: 1.5px solid #1a73e8 !important; width: 100%; height: 40px;
-        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
+        border: 1.5px solid #1a73e8 !important; width: 100% !important; max-width: 52px !important; height: 40px !important;
+        margin-top: 0px !important; margin-left: auto !important; margin-right: auto !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.search-btn) + .element-container button:hover {
         background-color: #1a73e8 !important; color: #ffffff !important; }
     .totals-inline-bar { display: flex !important; justify-content: center !important;
@@ -868,7 +868,7 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2.0, 3.8, 1.0, 1.0, 1.0])
+    c1, c2, c3, c4, c5, c6 = st.columns([1.5, 2.2, 4.0, 0.8, 0.8, 0.8])
 
     with c1:
         st.markdown("<div style='font-size:13.5px; font-weight:600; color:#202124; margin-bottom:2px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
