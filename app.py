@@ -512,40 +512,13 @@ custom_css = r"""
     div[data-testid="stSelectbox"] > div > div:hover, div[data-testid="stMultiSelect"] > div > div:hover {
         border-color: #1a73e8 !important; }
     .filter-panel-marker { display: none !important; }
-    .clear-super-btn { display: none !important; }
-    div.element-container:has(.clear-super-btn) { display: none !important; }
-    div.element-container:has(.clear-super-btn) + .element-container button {
-        background-color: #ffffff !important;
-        color: #d93025 !important;
-        border: 1.5px solid #d93025 !important;
-        border-radius: 6px !important;
-        width: 100% !important;
-        height: 40px !important;
-        min-height: 40px !important;
-        max-height: 40px !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        cursor: pointer !important;
-        transition: all 0.2s ease !important;
-        margin: 0 !important;
-        padding: 0 !important;
-    }
-    div.element-container:has(.clear-super-btn) + .element-container button * {
-        display: none !important;
-    }
-    div.element-container:has(.clear-super-btn) + .element-container button::after {
-        font-family: "bootstrap-icons" !important;
-        content: "\F5DE" !important;
-        font-size: 18px !important;
-        visibility: visible !important;
-        color: inherit !important;
-        display: inline-block !important;
-    }
-    div.element-container:has(.clear-super-btn) + .element-container button:hover {
-        background-color: #d93025 !important;
-        color: #ffffff !important;
-    }
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
+        border: 1.5px solid #cccccc !important; border-radius: 8px !important;
+        background-color: #ffffff !important; padding: 16px 20px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important; margin-bottom: 20px !important; }
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
+        flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
         border: 1.5px solid #cccccc !important; border-radius: 8px !important;
         background-color: #ffffff !important; padding: 16px 20px !important;
@@ -906,7 +879,7 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 3.6, 1.0, 1.0, 1.0])
+    c1, c2, c3, c4, c5, c6, c7 = st.columns([1.5, 2.0, 1.8, 2.8, 1.0, 1.0, 1.0])
 
     with c1:
         st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Agrupar por:</div>", unsafe_allow_html=True)
@@ -947,14 +920,9 @@ with st.container(border=True):
 
     with c4:
         st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:6px;'>Supernumerario:</div>", unsafe_allow_html=True)
-        c_sel, c_del = st.columns([0.82, 0.18], gap="small")
-        with c_sel:
-            nombre_idx = nombres_disponibles.index(st.session_state.nombre_sel_draft) if st.session_state.nombre_sel_draft in nombres_disponibles else 0
-            nombre_sel_draft = st.selectbox("Supernumerario:", options=nombres_disponibles, index=nombre_idx, key="nombre_sel_draft_widget", label_visibility="collapsed", on_change=on_change_nombre)
-            st.session_state.nombre_sel_draft = nombre_sel_draft
-        with c_del:
-            st.markdown('<div class="clear-super-btn"></div>', unsafe_allow_html=True)
-            st.button("", key="btn_clear_nombre", help="Borrar filtro Supernumerario", on_click=clear_nombre)
+        nombre_idx = nombres_disponibles.index(st.session_state.nombre_sel_draft) if st.session_state.nombre_sel_draft in nombres_disponibles else 0
+        nombre_sel_draft = st.selectbox("Supernumerario:", options=nombres_disponibles, index=nombre_idx, key="nombre_sel_draft_widget", label_visibility="collapsed", on_change=on_change_nombre)
+        st.session_state.nombre_sel_draft = nombre_sel_draft
 
     with c5:
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
@@ -968,7 +936,7 @@ with st.container(border=True):
 
     with c6:
         st.markdown('<div class="clear-btn">', unsafe_allow_html=True)
-        st.button("Borrar Filtros", key="btn_clear", use_container_width=True, on_click=reset_filters)
+        st.button("Borrar Filtro Supernumerario", key="btn_clear", help="Borrar filtro Supernumerario", use_container_width=True, on_click=clear_nombre)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c7:
