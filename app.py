@@ -724,29 +724,15 @@ def clear_nombre():
 def on_change_nombre():
     val = st.session_state.get("nombre_sel_draft_widget", "Todos")
     st.session_state.nombre_sel_draft = val
-    df_raw = st.session_state.get("df_raw")
-    if val != "Todos" and df_raw is not None:
-        matched = df_raw[df_raw['NOMBRE SUPER VALIDADO'] == val]['CEDULA_FINAL'].dropna()
-        if not matched.empty:
-            c_val = str(matched.iloc[0])
-            st.session_state.cedula_sel_draft = c_val
-            st.session_state.cedula_sel_draft_widget = c_val
-    else:
-        st.session_state.cedula_sel_draft = "Todas"
+    st.session_state.cedula_sel_draft = "Todas"
+    if 'cedula_sel_draft_widget' in st.session_state:
         st.session_state.cedula_sel_draft_widget = "Todas"
 
 def on_change_cedula():
     val = st.session_state.get("cedula_sel_draft_widget", "Todas")
     st.session_state.cedula_sel_draft = val
-    df_raw = st.session_state.get("df_raw")
-    if val != "Todas" and df_raw is not None:
-        matched = df_raw[df_raw['CEDULA_FINAL'] == val]['NOMBRE SUPER VALIDADO'].dropna()
-        if not matched.empty:
-            n_val = str(matched.iloc[0])
-            st.session_state.nombre_sel_draft = n_val
-            st.session_state.nombre_sel_draft_widget = n_val
-    else:
-        st.session_state.nombre_sel_draft = "Todos"
+    st.session_state.nombre_sel_draft = "Todos"
+    if 'nombre_sel_draft_widget' in st.session_state:
         st.session_state.nombre_sel_draft_widget = "Todos"
 
 
