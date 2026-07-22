@@ -696,6 +696,26 @@ def clear_nombre():
         if k.startswith("nombre_sel_draft_widget_") or k.startswith("cedula_sel_draft_widget_"):
             del st.session_state[k]
 
+def on_change_nombre():
+    active_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
+    if active_keys:
+        val = st.session_state[active_keys[0]]
+        st.session_state.nombre_sel_draft = val if isinstance(val, list) else []
+    st.session_state.nombre_sel = st.session_state.nombre_sel_draft
+    st.session_state.mes_sel = st.session_state.mes_sel_draft
+    st.session_state.cedula_sel = st.session_state.cedula_sel_draft
+    st.session_state.agrupacion_sel = st.session_state.agrupacion_sel_draft
+
+def on_change_cedula():
+    active_keys = [k for k in st.session_state.keys() if k.startswith("cedula_sel_draft_widget_")]
+    if active_keys:
+        val = st.session_state[active_keys[0]]
+        st.session_state.cedula_sel_draft = val if isinstance(val, list) else []
+    st.session_state.cedula_sel = st.session_state.cedula_sel_draft
+    st.session_state.mes_sel = st.session_state.mes_sel_draft
+    st.session_state.nombre_sel = st.session_state.nombre_sel_draft
+    st.session_state.agrupacion_sel = st.session_state.agrupacion_sel_draft
+
 
 # ── Cabecera ──────────────────────────────────────────────────────────────────
 
@@ -908,7 +928,7 @@ with st.container(border=True):
         ced_key = f"cedula_sel_draft_widget_{num_ced_items}"
         cur_ced_draft = st.session_state.cedula_sel_draft if isinstance(st.session_state.cedula_sel_draft, list) else []
         default_cedulas = [c for c in cur_ced_draft if c in cedulas_disponibles]
-        cedulas_sel_draft = st.multiselect("Cedula:", options=cedulas_disponibles, default=default_cedulas, key=ced_key, placeholder="Todas", label_visibility="collapsed")
+        cedulas_sel_draft = st.multiselect("Cedula:", options=cedulas_disponibles, default=default_cedulas, key=ced_key, placeholder="Todas", label_visibility="collapsed", on_change=on_change_cedula)
         st.session_state.cedula_sel_draft = cedulas_sel_draft
 
     with c4:
@@ -923,7 +943,7 @@ with st.container(border=True):
         nom_key = f"nombre_sel_draft_widget_{num_nom_items}"
         cur_nom_draft = st.session_state.nombre_sel_draft if isinstance(st.session_state.nombre_sel_draft, list) else []
         default_nombres = [n for n in cur_nom_draft if n in nombres_disponibles]
-        nombres_sel_draft = st.multiselect("Supernumerario:", options=nombres_disponibles, default=default_nombres, key=nom_key, placeholder="Todos", label_visibility="collapsed")
+        nombres_sel_draft = st.multiselect("Supernumerario:", options=nombres_disponibles, default=default_nombres, key=nom_key, placeholder="Todos", label_visibility="collapsed", on_change=on_change_nombre)
         st.session_state.nombre_sel_draft = nombres_sel_draft
 
     with c5:
