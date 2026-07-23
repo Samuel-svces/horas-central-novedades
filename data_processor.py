@@ -441,7 +441,8 @@ def load_and_clean_data(file_source):
 def is_unpaid_leave_or_permission(val):
     """
     Verifica si el valor de 'Hora Fin Restriccion' contiene alguna de las palabras clave:
-    'LICENCIA NO REMUNERADA', 'PERMISO', 'LICENCIA' (excluyendo 'LICENCIA REMUNERADA'), 'VACACIONES'.
+    'LICENCIA NO REMUNERADA', 'PERMISO', 'LICENCIA' (excluyendo 'LICENCIA REMUNERADA'),
+    o 'VACACIONES'.
     """
     if pd.isna(val):
         return False
@@ -451,7 +452,7 @@ def is_unpaid_leave_or_permission(val):
         return False
     if 'LICENCIA REMUNERADA' in val_str and 'NO REMUNERADA' not in val_str:
         return False
-    keywords = ['LICENCIA NO REMUNERADA', 'PERMISO', 'LICENCIA', 'VACACIONES', 'VACACION']
+    keywords = ['LICENCIA NO REMUNERADA', 'PERMISO', 'LICENCIA', 'VACACIONES']
     return any(kw in val_str for kw in keywords)
 
 
