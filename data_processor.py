@@ -22,6 +22,22 @@ MESES_MAP = {
     7: 'Julio', 8: 'Agosto', 9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
 }
 
+MESES_ABR = {
+    1: 'Ene', 2: 'Feb', 3: 'Mar', 4: 'Abr', 5: 'May', 6: 'Jun',
+    7: 'Jul', 8: 'Ago', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dic'
+}
+
+def format_semana_str(inicio, fin):
+    if pd.isna(inicio) or pd.isna(fin):
+        return 'Sin Fecha'
+    m_ini = MESES_ABR.get(inicio.month, '')
+    m_fin = MESES_ABR.get(fin.month, '')
+    if inicio.month == fin.month:
+        return f"{inicio.strftime('%d')} - {fin.strftime('%d')} {m_ini}"
+    else:
+        return f"{inicio.strftime('%d')} {m_ini} - {fin.strftime('%d')} {m_fin}"
+
+
 def clean_cedula_val(val):
     """
     Limpia el valor de la cédula para retornar un string entero o None si es inválido.
@@ -817,8 +833,7 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
         )
         grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
         grouped['SEMANA'] = grouped.apply(
-            lambda r: f"{r['SEMANA_INICIO'].strftime('%d')} - {r['SEMANA_FIN'].strftime('%d')}"
-            if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
+            lambda r: format_semana_str(r['SEMANA_INICIO'], r['SEMANA_FIN']),
             axis=1
         )
         grouped['FECHA_INICIO_STR'] = grouped['SEMANA_INICIO'].dt.strftime('%d/%m/%Y').fillna('')
@@ -849,8 +864,7 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
     )
     grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
     grouped['SEMANA'] = grouped.apply(
-        lambda r: f"{r['SEMANA_INICIO'].strftime('%d')} - {r['SEMANA_FIN'].strftime('%d')}"
-        if pd.notna(r['SEMANA_INICIO']) else 'Sin Fecha',
+        lambda r: format_semana_str(r['SEMANA_INICIO'], r['SEMANA_FIN']),
         axis=1
     )
     grouped['FECHA_INICIO_STR'] = grouped['SEMANA_INICIO'].dt.strftime('%d/%m/%Y').fillna('')
