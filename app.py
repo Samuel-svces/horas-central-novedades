@@ -496,19 +496,19 @@ custom_css = r"""
     .element-container:has(.clear-btn) + .element-container button {
         background-color: #ffffff !important; color: #d93025 !important;
         border: 1.5px solid #d93025 !important; width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
-        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
+        margin-top: 4px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.clear-btn) + .element-container button:hover {
         background-color: #d93025 !important; color: #ffffff !important; }
     .element-container:has(.export-btn) + .element-container button {
         background-color: #ffffff !important; color: #1e8e3e !important;
         border: 1.5px solid #1e8e3e !important; width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
-        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
+        margin-top: 4px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.export-btn) + .element-container button:hover {
         background-color: #1e8e3e !important; color: #ffffff !important; }
     .element-container:has(.search-btn) + .element-container button {
         background-color: #ffffff !important; color: #1a73e8 !important;
         border: 1.5px solid #1a73e8 !important; width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
-        margin-top: 0px !important; font-weight: 600; transition: all 0.2s ease; }
+        margin-top: 4px !important; font-weight: 600; transition: all 0.2s ease; }
     .element-container:has(.search-btn) + .element-container button:hover {
         background-color: #1a73e8 !important; color: #ffffff !important; }
     .totals-inline-bar { display: flex !important; justify-content: center !important;
@@ -972,7 +972,7 @@ with st.container(border=True):
         st.session_state.nombre_sel_draft = nombres_sel_draft
 
     with c4:
-        st.markdown("<div style='font-size:12px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:14px; font-weight:600; color:transparent; margin-bottom:4px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
         if st.button("Buscar", key="btn_search", use_container_width=True):
             st.session_state.mes_sel = st.session_state.mes_sel_draft
@@ -982,13 +982,13 @@ with st.container(border=True):
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c5:
-        st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:14px; font-weight:600; color:transparent; margin-bottom:4px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="clear-btn">', unsafe_allow_html=True)
         st.button("Borrar Filtro Supernumerario", key="btn_clear", help="Borrar filtro Supernumerario", use_container_width=True, on_click=clear_nombre)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c6:
-        st.markdown("<div style='font-size:13.5px; font-weight:600; color:transparent; margin-bottom:2px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div style='font-size:14px; font-weight:600; color:transparent; margin-bottom:4px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="export-btn">', unsafe_allow_html=True)
         cols_to_export_det = [c for c in detalle_cols_base if c in df_filtrado.columns]
         daily_targets = st.session_state.get('daily_targets', {})
