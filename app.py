@@ -431,7 +431,9 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
 
 # ── Configuración de página ───────────────────────────────────────────────────
 
-favicon_path = os.path.join(os.path.dirname(__file__), "favicon.svg")
+favicon_path = os.path.join(os.path.dirname(__file__), "favicon.png")
+if not os.path.exists(favicon_path):
+    favicon_path = os.path.join(os.path.dirname(__file__), "favicon.svg")
 
 st.set_page_config(
     page_title="Control de horas Central de novedades",
