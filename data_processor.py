@@ -461,7 +461,7 @@ def get_incapacity_or_consulting_info(val):
     Verifica si el valor de 'Hora Fin Restriccion' contiene alguna de las palabras clave para:
     - Incapacidad ('INCAPACIDAD', 'INCAP')
     - Consultando ('CONSULTANDO', 'CONSUL')
-    Retorna una tupla (tipo_estado, horas_a_sumar) ej. ('Incapacidad', 7.0) o (None, 0.0).
+    Retorna una tupla (tipo_estado, 0.0) o (None, 0.0).
     """
     if pd.isna(val):
         return None, 0.0
@@ -471,10 +471,10 @@ def get_incapacity_or_consulting_info(val):
         return None, 0.0
 
     if 'INCAPACIDAD' in val_str or 'INCAP' in val_str:
-        return 'Incapacidad', 7.0
+        return 'Incapacidad', 0.0
 
     if 'CONSULTANDO' in val_str or 'CONSUL' in val_str:
-        return 'Consultando', 7.0
+        return 'Consultando', 0.0
 
     return None, 0.0
 
