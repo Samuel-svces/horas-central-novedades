@@ -456,10 +456,33 @@ def is_unpaid_leave_or_permission(val):
     return any(kw in val_str for kw in keywords)
 
 
+def get_incapacity_or_consulting_info(val):
+    """
+    Verifica si el valor de 'Hora Fin Restriccion' contiene alguna de las palabras clave para:
+    - Incapacidad ('INCAPACIDAD', 'INCAP')
+    - Consultando ('CONSULTANDO', 'CONSUL')
+    Retorna una tupla (tipo_estado, horas_a_sumar) ej. ('Incapacidad', 7.0) o (None, 0.0).
+    """
+    if pd.isna(val):
+        return None, 0.0
+    val_str = str(val).strip().upper()
+    val_str = val_str.replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+    if not val_str or val_str in ['NAN', 'NONE', 'NULL', '']:
+        return None, 0.0
+
+    if 'INCAPACIDAD' in val_str or 'INCAP' in val_str:
+        return 'Incapacidad', 7.0
+
+    if 'CONSULTANDO' in val_str or 'CONSUL' in val_str:
+        return 'Consultando', 7.0
+
+    return None, 0.0
+
+
 def get_restriction_dict(df_ref=None, df_super=None):
     """
     Construye un diccionario {(doc_norm, fecha_date): text_restriccion}
-    para rápida búsqueda de licencias/permisos no remunerados por médico y fecha.
+    para rápida búsqueda de licencias/permisos no remunerados, incapacidades y consultando por médico y fecha.
     """
     restr_dict = {}
 
@@ -468,17 +491,21 @@ def get_restriction_dict(df_ref=None, df_super=None):
             f_clean = r.get('FECHA_CLEAN')
             doc_norm = r.get('NOMBRE_NORM')
             restr_val = r.get('RESTRICCION')
-            if pd.notna(f_clean) and pd.notna(doc_norm) and is_unpaid_leave_or_permission(restr_val):
-                restr_dict[(doc_norm, f_clean.date())] = str(restr_val).strip()
+            if pd.notna(f_clean) and pd.notna(doc_norm):
+                restr_str = str(restr_val).strip()
+                if is_unpaid_leave_or_permission(restr_str) or get_incapacity_or_consulting_info(restr_str)[0] is not None:
+                    restr_dict[(doc_norm, f_clean.date())] = restr_str
 
     if df_ref is not None and not df_ref.empty and 'RESTRICCION' in df_ref.columns:
         for _, r in df_ref.iterrows():
             f_clean = r.get('FECHA_CLEAN')
             doc_name = r.get('NOMBRE SUPER VALIDADO')
             restr_val = r.get('RESTRICCION')
-            if pd.notna(f_clean) and pd.notna(doc_name) and is_unpaid_leave_or_permission(restr_val):
-                doc_norm = normalize_name(doc_name)
-                restr_dict[(doc_norm, f_clean.date())] = str(restr_val).strip()
+            if pd.notna(f_clean) and pd.notna(doc_name):
+                restr_str = str(restr_val).strip()
+                if is_unpaid_leave_or_permission(restr_str) or get_incapacity_or_consulting_info(restr_str)[0] is not None:
+                    doc_norm = normalize_name(doc_name)
+                    restr_dict[(doc_norm, f_clean.date())] = restr_str
 
     return restr_dict
 
@@ -656,13 +683,18 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                     else:
                         horas_a_laborar = val
 
-                    # Verificar restricciones (Licencia no remunerada, Permiso)
+                    # Verificar restricciones (Licencia no remunerada, Permiso, Incapacidad, Consultando)
                     doc_norm = normalize_name(doc_name)
                     restr_text = restr_dict.get((doc_norm, curr.date()))
+
+                    incap_type, add_hours = get_incapacity_or_consulting_info(restr_text)
 
                     if restr_text and is_unpaid_leave_or_permission(restr_text):
                         horas_a_laborar = 0.0
                         estado = restr_text.upper()
+                    elif restr_text and incap_type is not None:
+                        horas_trabajadas += add_hours
+                        estado = incap_type
                     elif curr.dayofweek == 5 and horas_trabajadas == 0.0:
                         estado = "Descanso"
                     else:
