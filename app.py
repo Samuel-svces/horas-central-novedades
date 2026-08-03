@@ -343,7 +343,7 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
         'ESTADO': 'Estado'
     })
     df_export_dia_rename = df_export_dia_rename[
-        ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Recargo Nocturno', 'Novedades Cubiertas', 'Estado']
+        ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas', 'Estado']
     ]
     if not df_export_dia_rename.empty:
         totales = {c: [df_export_dia_rename[c].sum()] if c in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Recargo Nocturno', 'Novedades Cubiertas']
@@ -1074,7 +1074,7 @@ if agrupacion_vista == "Por Día":
         'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
         'ESTADO': 'Estado'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Recargo Nocturno', 'Novedades Cubiertas', 'Estado']
+    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas', 'Estado']
 elif agrupacion_vista == "Por Semana":
     tabla_display = tabla_consolidada_vista.rename(columns={
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
