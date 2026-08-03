@@ -371,8 +371,22 @@ def load_and_clean_data(file_source):
     # Adicionalmente, evitar registros que solo digan "SIN"
     df = df[df[col_name].str.upper() != 'SIN']
 
-    # 5. Transformar y limpiar HORAS TOTALES DECIMAL
+    # 5. Transformar y limpiar HORAS TOTALES DECIMAL y RECARGO NOCTURNO ORDINARIO
     df[col_horas] = pd.to_numeric(df[col_horas], errors='coerce').fillna(0.0)
+
+    col_recargo = None
+    for col in df.columns:
+        col_norm = str(col).strip().upper()
+        if 'RECARGO NOCTURNO' in col_norm:
+            col_recargo = col
+            break
+
+    if col_recargo:
+        df['RECARGO NOCTURNO ORDINARIO'] = pd.to_numeric(df[col_recargo], errors='coerce').fillna(0.0)
+    elif 'RECARGO NOCTURNO ORDINARIO' in df.columns:
+        df['RECARGO NOCTURNO ORDINARIO'] = pd.to_numeric(df['RECARGO NOCTURNO ORDINARIO'], errors='coerce').fillna(0.0)
+    else:
+        df['RECARGO NOCTURNO ORDINARIO'] = 0.0
 
     # 6. Procesar Fechas y Meses
     if col_fecha:
@@ -518,21 +532,31 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
     if df.empty or not daily_targets:
         return pd.DataFrame(columns=[
             'FECHA_CLEAN', 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
-            'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES', 'MES_NUM', 'HORAS_A_LABORAR'
+            'HORAS_TOTALES', 'RECARGO_NOCTURNO', 'CANTIDAD_NOVEDADES', 'MES', 'MES_NUM', 'HORAS_A_LABORAR'
         ])
         
     df_ref = df_unfiltered if df_unfiltered is not None else df
         
-    df_worked = df.groupby(['FECHA_CLEAN', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
-        HORAS_TRABAJADAS=('HORAS TOTALES DECIMAL', 'sum'),
-        CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
-    )
-    
-    # Crear un diccionario para búsquedas rápidas de días trabajados (O(1))
-    worked_dict = {
-        (row['FECHA_CLEAN'], row['NOMBRE SUPER VALIDADO']): (row['HORAS_TRABAJADAS'], row['CANTIDAD_NOVEDADES'])
-        for _, row in df_worked.iterrows()
-    }
+    col_rec_name = 'RECARGO NOCTURNO ORDINARIO' if 'RECARGO NOCTURNO ORDINARIO' in df.columns else None
+    if col_rec_name:
+        df_worked = df.groupby(['FECHA_CLEAN', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
+            HORAS_TRABAJADAS=('HORAS TOTALES DECIMAL', 'sum'),
+            RECARGO_NOCTURNO=(col_rec_name, 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+        )
+        worked_dict = {
+            (row['FECHA_CLEAN'], row['NOMBRE SUPER VALIDADO']): (row['HORAS_TRABAJADAS'], row['CANTIDAD_NOVEDADES'], row['RECARGO_NOCTURNO'])
+            for _, row in df_worked.iterrows()
+        }
+    else:
+        df_worked = df.groupby(['FECHA_CLEAN', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
+            HORAS_TRABAJADAS=('HORAS TOTALES DECIMAL', 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+        )
+        worked_dict = {
+            (row['FECHA_CLEAN'], row['NOMBRE SUPER VALIDADO']): (row['HORAS_TRABAJADAS'], row['CANTIDAD_NOVEDADES'], 0.0)
+            for _, row in df_worked.iterrows()
+        }
     
     # Determinar los meses permitidos según el filtro de Streamlit
     allowed_months = None
@@ -667,10 +691,11 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                     date_str = curr.strftime('%d/%m/%Y')
                     worked_info = worked_dict.get((curr, doc_name))
                     if worked_info:
-                        horas_trabajadas, novedades = worked_info
+                        horas_trabajadas, novedades, recargo_nocturno = worked_info
                     else:
                         horas_trabajadas = 0.0
                         novedades = 0
+                        recargo_nocturno = 0.0
 
                     # Omitir días futuros si no hay novedades registradas ese día
                     if curr.date() > today_dt and horas_trabajadas == 0:
@@ -706,6 +731,7 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
                         'CEDULA_FINAL': cedula,
                         'NOMBRE SUPER VALIDADO': doc_name,
                         'HORAS_TOTALES': horas_trabajadas,
+                        'RECARGO_NOCTURNO': recargo_nocturno,
                         'CANTIDAD_NOVEDADES': novedades,
                         'MES': month_name,
                         'MES_NUM': month_num,
@@ -759,18 +785,27 @@ def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None,
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
-                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR', 'ESTADO'
+                'HORAS_TOTALES', 'RECARGO_NOCTURNO', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR', 'ESTADO'
             ])
         df_daily = df_daily.sort_values(by=['FECHA_CLEAN', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]).reset_index(drop=True)
-        return df_daily[['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR', 'ESTADO']]
+        return df_daily[['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'HORAS_TOTALES', 'RECARGO_NOCTURNO', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR', 'ESTADO']]
 
     df_copy = df.copy()
     df_copy['FECHA_STR'] = df_copy['FECHA_CLEAN'].dt.strftime('%Y-%m-%d')
     df_copy['FECHA_STR'] = df_copy['FECHA_STR'].fillna('Sin Fecha')
-    grouped = df_copy.groupby(['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
-        HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
-        CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
-    )
+    col_rec = 'RECARGO NOCTURNO ORDINARIO' if 'RECARGO NOCTURNO ORDINARIO' in df_copy.columns else None
+    if col_rec:
+        grouped = df_copy.groupby(['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
+            HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+            RECARGO_NOCTURNO=(col_rec, 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+        )
+    else:
+        grouped = df_copy.groupby(['FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False).agg(
+            HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+        )
+        grouped['RECARGO_NOCTURNO'] = 0.0
     grouped['ESTADO'] = ""
     grouped = grouped.sort_values(by=['FECHA_STR', 'NOMBRE SUPER VALIDADO'], ascending=[False, True]).reset_index(drop=True)
     temp_date = pd.to_datetime(grouped['FECHA_STR'], format='%Y-%m-%d', errors='coerce')

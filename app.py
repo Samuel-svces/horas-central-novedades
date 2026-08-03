@@ -338,14 +338,15 @@ def generate_excel_data(df, daily_targets, monthly_targets, cols_to_export_det, 
         'FECHA_STR': 'Fecha', 'CEDULA_FINAL': 'Cédula',
         'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'HORAS_A_LABORAR': 'Horas a laborar', 'HORAS_TOTALES': 'Horas Laboradas',
-        'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
+        'TOTAL': 'Total', 'RECARGO_NOCTURNO': 'Recargo Nocturno',
+        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
         'ESTADO': 'Estado'
     })
     df_export_dia_rename = df_export_dia_rename[
-        ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas', 'Estado']
+        ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Recargo Nocturno', 'Novedades Cubiertas', 'Estado']
     ]
     if not df_export_dia_rename.empty:
-        totales = {c: [df_export_dia_rename[c].sum()] if c in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+        totales = {c: [df_export_dia_rename[c].sum()] if c in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Recargo Nocturno', 'Novedades Cubiertas']
                    else (['TOTAL GENERAL'] if c == 'Médico Supernumerario' else [''])
                    for c in df_export_dia_rename.columns}
         df_export_dia_rename = pd.concat([df_export_dia_rename, pd.DataFrame(totales)], ignore_index=True)
@@ -1069,10 +1070,11 @@ if agrupacion_vista == "Por Día":
         'FECHA_STR': 'Fecha', 'CEDULA_FINAL': 'Cédula',
         'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'HORAS_A_LABORAR': 'Horas a laborar', 'HORAS_TOTALES': 'Horas Laboradas',
-        'TOTAL': 'Total', 'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
+        'TOTAL': 'Total', 'RECARGO_NOCTURNO': 'Recargo Nocturno',
+        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
         'ESTADO': 'Estado'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas', 'Estado']
+    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Recargo Nocturno', 'Novedades Cubiertas', 'Estado']
 elif agrupacion_vista == "Por Semana":
     tabla_display = tabla_consolidada_vista.rename(columns={
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
@@ -1094,6 +1096,13 @@ tabla_display_formatted = tabla_display[cols_show].copy()
 for col in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']:
     if col in tabla_display_formatted.columns:
         tabla_display_formatted[col] = pd.to_numeric(tabla_display_formatted[col], errors='coerce').fillna(0).round(0).astype(int)
+
+if 'Recargo Nocturno' in tabla_display_formatted.columns:
+    rec_vals = pd.to_numeric(tabla_display_formatted['Recargo Nocturno'], errors='coerce').fillna(0)
+    if (rec_vals % 1 == 0).all():
+        tabla_display_formatted['Recargo Nocturno'] = rec_vals.astype(int)
+    else:
+        tabla_display_formatted['Recargo Nocturno'] = rec_vals.round(1)
 
 html_table = tabla_display_formatted.to_html(index=False, classes='custom-table', escape=False)
 
