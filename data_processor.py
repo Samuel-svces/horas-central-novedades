@@ -757,22 +757,32 @@ def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_supe
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM',
-                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR'
+                'HORAS_TOTALES', 'RECARGO_NOCTURNO', 'CANTIDAD_NOVEDADES', 'HORAS_A_LABORAR'
             ])
         grouped = df_daily.groupby(
             ['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False
         ).agg(
             HORAS_TOTALES=('HORAS_TOTALES', 'sum'),
+            RECARGO_NOCTURNO=('RECARGO_NOCTURNO', 'sum'),
             CANTIDAD_NOVEDADES=('CANTIDAD_NOVEDADES', 'sum'),
             HORAS_A_LABORAR=('HORAS_A_LABORAR', 'sum')
         )
         grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
         return grouped
 
-    grouped = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).agg(
-        HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
-        CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
-    )
+    col_rec = 'RECARGO NOCTURNO ORDINARIO' if 'RECARGO NOCTURNO ORDINARIO' in df.columns else None
+    if col_rec:
+        grouped = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).agg(
+            HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+            RECARGO_NOCTURNO=(col_rec, 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+        )
+    else:
+        grouped = df.groupby(['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM'], as_index=False).agg(
+            HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count')
+        )
+        grouped['RECARGO_NOCTURNO'] = 0.0
     grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
     return grouped
 
@@ -883,7 +893,7 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
-                'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES_NUM',
+                'HORAS_TOTALES', 'RECARGO_NOCTURNO', 'CANTIDAD_NOVEDADES', 'MES_NUM',
                 'SEMANA_FIN', 'SEMANA', 'FECHA_INICIO_STR', 'FECHA_FIN_STR', 'HORAS_A_LABORAR'
             ])
         df_copy = df_daily.copy()
@@ -895,6 +905,7 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
             ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
         ).agg(
             HORAS_TOTALES=('HORAS_TOTALES', 'sum'),
+            RECARGO_NOCTURNO=('RECARGO_NOCTURNO', 'sum'),
             CANTIDAD_NOVEDADES=('CANTIDAD_NOVEDADES', 'sum'),
             HORAS_A_LABORAR=('HORAS_A_LABORAR', 'sum'),
             MES_NUM=('MES_NUM', 'first')
@@ -916,20 +927,32 @@ def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None,
     if df_copy.empty:
         return pd.DataFrame(columns=[
             'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
-            'HORAS_TOTALES', 'CANTIDAD_NOVEDADES', 'MES_NUM',
+            'HORAS_TOTALES', 'RECARGO_NOCTURNO', 'CANTIDAD_NOVEDADES', 'MES_NUM',
             'SEMANA_FIN', 'SEMANA', 'FECHA_INICIO_STR', 'FECHA_FIN_STR'
         ])
     df_copy['SEMANA_INICIO'] = df_copy['FECHA_CLEAN'] - pd.to_timedelta(
         df_copy['FECHA_CLEAN'].dt.dayofweek, unit='D'
     )
     df_copy['SEMANA_INICIO'] = df_copy['SEMANA_INICIO'].dt.normalize()
-    grouped = df_copy.groupby(
-        ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
-    ).agg(
-        HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
-        CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count'),
-        MES_NUM=('MES_NUM', 'first')
-    )
+    col_rec = 'RECARGO NOCTURNO ORDINARIO' if 'RECARGO NOCTURNO ORDINARIO' in df_copy.columns else None
+    if col_rec:
+        grouped = df_copy.groupby(
+            ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
+        ).agg(
+            HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+            RECARGO_NOCTURNO=(col_rec, 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count'),
+            MES_NUM=('MES_NUM', 'first')
+        )
+    else:
+        grouped = df_copy.groupby(
+            ['SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO'], as_index=False
+        ).agg(
+            HORAS_TOTALES=('HORAS TOTALES DECIMAL', 'sum'),
+            CANTIDAD_NOVEDADES=('HORAS TOTALES DECIMAL', 'count'),
+            MES_NUM=('MES_NUM', 'first')
+        )
+        grouped['RECARGO_NOCTURNO'] = 0.0
     grouped['SEMANA_FIN'] = grouped['SEMANA_INICIO'] + pd.Timedelta(days=5)
     grouped['SEMANA'] = grouped.apply(
         lambda r: format_semana_str(r['SEMANA_INICIO'], r['SEMANA_FIN']),

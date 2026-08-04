@@ -528,6 +528,7 @@ custom_css = r"""
     .badge-green { background-color: #137333 !important; }
     .badge-yellow { background-color: #f9ab00 !important; }
     .badge-red { background-color: #d93025 !important; }
+    .badge-purple { background-color: #6f42c1 !important; }
     /* ── Selectbox (dropdown simple) ─────────────────────────────────── */
     div[data-testid="stSelectbox"] > div > div {
         border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
@@ -1050,14 +1051,23 @@ if not tabla_consolidada_vista.empty:
     tot_diferencia = tabla_consolidada_vista['TOTAL'].sum()
     tot_novedades = tabla_consolidada_vista['CANTIDAD_NOVEDADES'].sum()
     tot_medicos_activos = df_filtrado['NOMBRE SUPER VALIDADO'].nunique()
+    if 'RECARGO_NOCTURNO' in tabla_consolidada_vista.columns:
+        tot_recargo = tabla_consolidada_vista['RECARGO_NOCTURNO'].sum()
+    elif 'RECARGO NOCTURNO ORDINARIO' in df_filtrado.columns:
+        tot_recargo = df_filtrado['RECARGO NOCTURNO ORDINARIO'].sum()
+    else:
+        tot_recargo = 0.0
+
     dif_badge_class = "badge-green" if tot_diferencia > 0 else ("badge-red" if tot_diferencia < 0 else "badge-yellow")
     dif_sign = "+" if tot_diferencia > 0 else ""
+    recargo_fmt = f"{tot_recargo:,.0f} hrs" if (tot_recargo % 1 == 0) else f"{tot_recargo:,.1f} hrs"
     st.markdown(
         f'<div class="totals-inline-bar">'
         f'<div class="totals-inline-item"><span class="totals-inline-label">MÉDICOS ACTIVOS:</span><span class="totals-inline-badge badge-blue">{tot_medicos_activos:,}</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">HORAS A LABORAR:</span><span class="totals-inline-badge badge-blue">{tot_horas_a_laborar:,.0f} hrs</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">HORAS LABORADAS:</span><span class="totals-inline-badge badge-green">{tot_horas_laboradas:,.0f} hrs</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">DIFERENCIA:</span><span class="totals-inline-badge {dif_badge_class}">{dif_sign}{tot_diferencia:,.0f} hrs</span></div>'
+        f'<div class="totals-inline-item"><span class="totals-inline-label">RECARGO:</span><span class="totals-inline-badge badge-purple">{recargo_fmt}</span></div>'
         f'<div class="totals-inline-item"><span class="totals-inline-label">NOVEDADES CUBIERTAS:</span><span class="totals-inline-badge badge-red">{tot_novedades:,}</span></div>'
         f'</div>',
         unsafe_allow_html=True
@@ -1080,17 +1090,19 @@ elif agrupacion_vista == "Por Semana":
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'SEMANA': 'Semana', 'HORAS_A_LABORAR': 'Horas a laborar',
         'HORAS_TOTALES': 'Horas Laboradas', 'TOTAL': 'Total',
+        'RECARGO_NOCTURNO': 'Recargo Nocturno',
         'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Semana', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+    cols_show = ['Cédula', 'Médico Supernumerario', 'Semana', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas']
 else:
     tabla_display = tabla_consolidada_vista.rename(columns={
         'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
         'MES': 'Mes', 'HORAS_A_LABORAR': 'Horas a laborar',
         'HORAS_TOTALES': 'Horas Laboradas', 'TOTAL': 'Total',
+        'RECARGO_NOCTURNO': 'Recargo Nocturno',
         'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Mes', 'Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']
+    cols_show = ['Cédula', 'Médico Supernumerario', 'Mes', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas']
 
 tabla_display_formatted = tabla_display[cols_show].copy()
 for col in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']:
