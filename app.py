@@ -440,7 +440,7 @@ if not os.path.exists(favicon_path):
     favicon_path = os.path.join(os.path.dirname(__file__), "favicon.svg")
 
 st.set_page_config(
-    page_title="Control de horas Central de novedades",
+    page_title="Control de horas Central",
     page_icon=favicon_path if os.path.exists(favicon_path) else "⏳",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -895,7 +895,7 @@ with st.container():
     with col_title:
         st.markdown(
             "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#ffffff; "
-            "font-size:28px; margin:0;'>Control de horas Central de novedades</h1>",
+            "font-size:28px; margin:0;'>Control de horas Central</h1>",
             unsafe_allow_html=True
         )
 
