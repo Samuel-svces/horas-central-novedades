@@ -69,6 +69,9 @@ def get_onedrive_config():
             config["file_path"]        = st.secrets["SHAREPOINT_FILE_PATH"]
             if "SHAREPOINT_FILE_PATH_HISTORIC" in st.secrets:
                 config["file_path_historic"] = st.secrets["SHAREPOINT_FILE_PATH_HISTORIC"]
+            else:
+                # Fallback automático a la ruta del archivo histórico si no viene explícita en st.secrets
+                config["file_path_historic"] = config["file_path"].replace("CONSOLIDADO 2026.xlsx", "CONSOLIDADO 2026 HISTORICO.xlsx")
         else:
             # Fallback al método clásico con drive_id y file_id
             config["mode"]     = "onedrive"
@@ -102,7 +105,7 @@ def cargar_desde_onedrive():
                     file_drive_path=config["file_path"],
                 )
                 xl_actual = pd.ExcelFile(file_bytes_actual, engine='calamine')
-                df_raw_actual = dp.load_and_clean_data(xl_actual)
+                df_raw_actual = dp.load_and_clean_data(xl_actual, preferred_sheet='CONSOLIDADO 2026 NOMINA')
                 
                 df_raw_historico = None
                 xl_hist = None
@@ -117,7 +120,7 @@ def cargar_desde_onedrive():
                             file_drive_path=config["file_path_historic"],
                         )
                         xl_hist = pd.ExcelFile(file_bytes_hist, engine='calamine')
-                        df_raw_historico = dp.load_and_clean_data(xl_hist)
+                        df_raw_historico = dp.load_and_clean_data(xl_hist, preferred_sheet='CONSOLIDADO 2026 NOMINA HISTORI')
                     except Exception as e:
                         st.warning(f"Error cargando archivo historico: {e}")
                 
@@ -759,7 +762,70 @@ def on_change_nombre():
     st.session_state.agrupacion_sel = st.session_state.agrupacion_sel_draft
 
 
-# ── Cabecera ──────────────────────────────────────────────────────────────────
+def cargar_desde_ruta_local(file_path):
+    """Carga los datos desde la ruta del archivo local y busca el histórico en la misma carpeta si existe."""
+    safe_path, cleanup = dp.get_safe_file_source(file_path)
+    safe_hist_path = None
+    cleanup_hist = lambda: None
+    try:
+        xl_actual = pd.ExcelFile(safe_path, engine='calamine')
+        df_raw_actual = dp.load_and_clean_data(xl_actual, preferred_sheet='CONSOLIDADO 2026 NOMINA')
+
+        # Buscar si existe el archivo histórico en la misma carpeta
+        dir_name = os.path.dirname(file_path)
+        hist_path = os.path.join(dir_name, "CONSOLIDADO 2026 HISTORICO.xlsx")
+        df_raw_historico = None
+        xl_hist = None
+        if os.path.exists(hist_path):
+            safe_hist_path, cleanup_hist = dp.get_safe_file_source(hist_path)
+            try:
+                xl_hist = pd.ExcelFile(safe_hist_path, engine='calamine')
+                df_raw_historico = dp.load_and_clean_data(xl_hist, preferred_sheet='CONSOLIDADO 2026 NOMINA HISTORI')
+            except Exception:
+                pass
+
+        if df_raw_historico is not None and not df_raw_historico.empty:
+            meses_en_actual = set(df_raw_actual['MES_NUM'].dropna().unique())
+            df_raw_historico = df_raw_historico[
+                ~df_raw_historico['MES_NUM'].isin(meses_en_actual)
+            ]
+            st.session_state.df_raw = pd.concat(
+                [df_raw_historico, df_raw_actual], ignore_index=True
+            )
+            st.session_state.hist_loaded = True
+        else:
+            st.session_state.df_raw = df_raw_actual
+            st.session_state.hist_loaded = False
+
+        df_super_actual = dp.load_supernumerario_sheets(xl_actual)
+        df_super_hist = dp.load_supernumerario_sheets(xl_hist) if xl_hist is not None else None
+        if df_super_hist is not None and not df_super_hist.empty:
+            if df_super_actual is not None and not df_super_actual.empty:
+                st.session_state.df_super = pd.concat([df_super_hist, df_super_actual], ignore_index=True).drop_duplicates()
+            else:
+                st.session_state.df_super = df_super_hist
+        else:
+            st.session_state.df_super = df_super_actual
+
+        plaza_actual = dp.load_plaza_fija_dates(xl_actual)
+        plaza_hist = dp.load_plaza_fija_dates(xl_hist) if xl_hist is not None else {}
+        if plaza_hist:
+            plaza_hist.update(plaza_actual)
+            st.session_state.plaza_fija_dates = plaza_hist
+        else:
+            st.session_state.plaza_fija_dates = plaza_actual
+
+        m, d = dp.load_calendar_targets(xl_actual)
+        st.session_state.monthly_targets = m
+        st.session_state.daily_targets = d
+        st.session_state.load_error = None
+        st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
+    finally:
+        cleanup()
+        cleanup_hist()
+
+
+# ── Popover de Configuración en Cabecera ──────────────────────────────────────
 
 with st.container():
     st.markdown('<div class="header-banner-marker"></div>', unsafe_allow_html=True)
@@ -803,19 +869,7 @@ with st.container():
                 if st.button("🔄 Cargar desde ruta local", use_container_width=True):
                     if os.path.exists(file_path):
                         try:
-                            safe_path, cleanup = dp.get_safe_file_source(file_path)
-                            try:
-                                xl = pd.ExcelFile(safe_path, engine='calamine')
-                                st.session_state.df_raw = dp.load_and_clean_data(xl)
-                                st.session_state.df_super = dp.load_supernumerario_sheets(xl)
-                                st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
-                                m, d = dp.load_calendar_targets(xl)
-                                st.session_state.monthly_targets = m
-                                st.session_state.daily_targets = d
-                                st.session_state.load_error = None
-                                st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
-                            finally:
-                                cleanup()
+                            cargar_desde_ruta_local(file_path)
                             st.rerun()
                         except Exception as e:
                             st.session_state.load_error = str(e)
@@ -857,18 +911,7 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
         file_path = st.session_state.file_path_input
         if os.path.exists(file_path):
             try:
-                safe_path, cleanup = dp.get_safe_file_source(file_path)
-                try:
-                    xl = pd.ExcelFile(safe_path, engine='calamine')
-                    st.session_state.df_raw = dp.load_and_clean_data(xl)
-                    st.session_state.df_super = dp.load_supernumerario_sheets(xl)
-                    st.session_state.plaza_fija_dates = dp.load_plaza_fija_dates(xl)
-                    m, d = dp.load_calendar_targets(xl)
-                    st.session_state.monthly_targets = m
-                    st.session_state.daily_targets = d
-                    st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
-                finally:
-                    cleanup()
+                cargar_desde_ruta_local(file_path)
             except Exception as e:
                 st.session_state.load_error = str(e)
         else:

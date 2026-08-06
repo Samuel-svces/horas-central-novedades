@@ -215,10 +215,11 @@ def download_excel_from_onedrive(
         )
     return io.BytesIO(response.content)
 
-def load_and_clean_data(file_source):
+def load_and_clean_data(file_source, preferred_sheet=None):
     """
     Carga el archivo (CSV o Excel) y realiza todo el pipeline de limpieza y transformación.
-    :param file_source: Ruta al archivo (str) o un objeto tipo File de Streamlit.
+    :param file_source: Ruta al archivo (str), objeto File de Streamlit, BytesIO o pd.ExcelFile.
+    :param preferred_sheet: Nombre de hoja preferido (opcional).
     :return: DataFrame limpio
     """
     if isinstance(file_source, pd.ExcelFile):
@@ -228,36 +229,50 @@ def load_and_clean_data(file_source):
         safe_source, cleanup = get_safe_file_source(file_source)
     try:
         # 1. Cargar el archivo según su tipo
-        if isinstance(safe_source, pd.ExcelFile):
+        is_csv = isinstance(safe_source, str) and safe_source.endswith(('.csv', '.CSV'))
+        if not is_csv:
             try:
-                df = pd.read_excel(safe_source, sheet_name='CONSOLIDADO 2026 NOMINA')
-            except Exception as e:
-                try:
-                    sheets = safe_source.sheet_names
-                    nomina_sheets = [s for s in sheets if 'NOMINA' in s.upper()]
-                    sheet_to_load = nomina_sheets[0] if nomina_sheets else sheets[0]
-                    df = pd.read_excel(safe_source, sheet_name=sheet_to_load)
-                except Exception as ex:
-                    raise ValueError(f"Error al leer el archivo Excel: {str(ex)}")
-        elif isinstance(safe_source, str) and safe_source.endswith(('.csv', '.CSV')):
+                if isinstance(safe_source, pd.ExcelFile):
+                    xl = safe_source
+                else:
+                    xl = pd.ExcelFile(safe_source, engine='calamine')
+                
+                sheet_names = xl.sheet_names
+                sheet_to_load = None
+
+                # Buscar entre candidatos conocidos (respetando preferred_sheet si se pasa)
+                candidates = []
+                if preferred_sheet:
+                    candidates.append(preferred_sheet)
+                candidates.extend([
+                    'CONSOLIDADO 2026 NOMINA HISTORI',
+                    'CONSOLIDADO 2026 NOMINA HISTORICO',
+                    'CONSOLIDADO 2026 NOMINA',
+                    'CONSOLIDADO NOMINA HISTORI',
+                    'CONSOLIDADO NOMINA'
+                ])
+
+                for cand in candidates:
+                    for s in sheet_names:
+                        if s.strip().upper() == cand.upper():
+                            sheet_to_load = s
+                            break
+                    if sheet_to_load:
+                        break
+
+                if not sheet_to_load:
+                    nomina_sheets = [s for s in sheet_names if 'NOMINA' in s.upper()]
+                    sheet_to_load = nomina_sheets[0] if nomina_sheets else sheet_names[0]
+
+                df = pd.read_excel(xl, sheet_name=sheet_to_load)
+            except Exception as ex:
+                raise ValueError(f"Error al leer el archivo Excel: {str(ex)}")
+        else:
             # Leer CSV detectando el separador (punto y coma o coma)
             try:
                 df = pd.read_csv(safe_source, sep=';', encoding='utf-8')
             except Exception:
                 df = pd.read_csv(safe_source, sep=',', encoding='utf-8')
-        else:
-            # Por defecto tratar como Excel
-            try:
-                df = pd.read_excel(safe_source, sheet_name='CONSOLIDADO 2026 NOMINA', engine='calamine')
-            except Exception as e:
-                try:
-                    xl = pd.ExcelFile(safe_source, engine='calamine')
-                    sheets = xl.sheet_names
-                    nomina_sheets = [s for s in sheets if 'NOMINA' in s.upper()]
-                    sheet_to_load = nomina_sheets[0] if nomina_sheets else sheets[0]
-                    df = pd.read_excel(xl, sheet_name=sheet_to_load)
-                except Exception as ex:
-                    raise ValueError(f"Error al leer el archivo Excel: {str(ex)}")
     finally:
         cleanup()
 
