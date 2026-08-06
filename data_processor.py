@@ -385,6 +385,57 @@ def load_and_clean_data(file_source, preferred_sheet=None):
     df = df[df[col_name].str.upper() != 'SIN']
 
     # 5. Transformar y limpiar HORAS TOTALES DECIMAL y RECARGO NOCTURNO ORDINARIO
+    df[col_horas] = pd.to_numeric(df[col_horas], errors='coerce')
+
+    # Fallback A: Si HORAS TOTALES DECIMAL es NaN o 0, verificar si el número se colocó en la columna 'TRANSPORTES'
+    col_transp = None
+    for col in df.columns:
+        if str(col).strip().upper() == 'TRANSPORTES':
+            col_transp = col
+            break
+
+    if col_transp:
+        def fill_from_transportes(row):
+            val_h = row[col_horas]
+            if pd.notna(val_h) and float(val_h) > 0:
+                return float(val_h)
+            val_t = row.get(col_transp)
+            if pd.notna(val_t):
+                num_t = pd.to_numeric(val_t, errors='coerce')
+                if pd.notna(num_t) and num_t > 0:
+                    return float(num_t)
+            return val_h
+        df[col_horas] = df.apply(fill_from_transportes, axis=1)
+
+    # Fallback B: Si sigue siendo NaN o 0, calcular la diferencia entre 'Hora inic' y 'Hora final'
+    col_h_inic = None
+    col_h_fin = None
+    for col in df.columns:
+        cnorm = str(col).strip().upper().replace('Á','A').replace('É','E').replace('Í','I').replace('Ó','O').replace('Ú','U')
+        if cnorm in ['HORA INIC', 'HORA INICIAL', 'HORA INICIO']:
+            col_h_inic = col
+        elif cnorm in ['HORA FINAL', 'HORA FIN']:
+            col_h_fin = col
+
+    if col_h_inic and col_h_fin:
+        def calc_hours_diff(row):
+            val_h = row[col_horas]
+            if pd.notna(val_h) and float(val_h) > 0:
+                return float(val_h)
+            try:
+                hi = pd.to_datetime(str(row[col_h_inic]), errors='coerce')
+                hf = pd.to_datetime(str(row[col_h_fin]), errors='coerce')
+                if pd.notna(hi) and pd.notna(hf):
+                    diff = (hf - hi).total_seconds() / 3600.0
+                    if diff < 0:
+                        diff += 24.0
+                    if diff > 0:
+                        return diff
+            except Exception:
+                pass
+            return val_h
+        df[col_horas] = df.apply(calc_hours_diff, axis=1)
+
     df[col_horas] = pd.to_numeric(df[col_horas], errors='coerce').fillna(0.0)
 
     col_recargo = None
