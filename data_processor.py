@@ -405,7 +405,7 @@ def load_and_clean_data(file_source, preferred_sheet=None):
 
     # 6. Procesar Fechas y Meses
     if col_fecha:
-        df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
+        df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
     else:
         df['FECHA_CLEAN'] = pd.NaT
 
@@ -869,7 +869,7 @@ def load_calendar_targets(file_source):
     # Limpiar fechas de festivos
     festivos = []
     if not fest_df.empty and 'FECHA' in fest_df.columns:
-        fest_df['FECHA_CLEAN'] = pd.to_datetime(fest_df['FECHA'], errors='coerce')
+        fest_df['FECHA_CLEAN'] = pd.to_datetime(fest_df['FECHA'], dayfirst=True, errors='coerce')
         festivos = fest_df['FECHA_CLEAN'].dt.date.dropna().tolist()
         
     # Asegurar que el 13 de julio de 2026 sea considerado festivo (en Colombia fue festivo)
@@ -1043,7 +1043,7 @@ def load_supernumerario_sheets(file_source):
                         col_restr = col
 
                 if col_fecha and col_nombre:
-                    df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
+                    df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
                     df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
                     df['MES_NUM'] = df['FECHA_CLEAN'].dt.month
                     if col_restr:
@@ -1079,7 +1079,7 @@ def load_supernumerario_sheets(file_source):
                         col_restr = col
 
                 if col_fecha and col_nombre:
-                    df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], errors='coerce')
+                    df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
                     df['NOMBRE_NORM'] = df[col_nombre].apply(normalize_name)
                     df['MES_NUM'] = month_num
                     if col_restr:
@@ -1153,7 +1153,7 @@ def load_plaza_fija_dates(file_source):
                 
             if col_super and col_fecha:
                 # Limpiar y normalizar los nombres y parsear las fechas
-                df['FECHA_PARSED'] = pd.to_datetime(df[col_fecha], errors='coerce')
+                df['FECHA_PARSED'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
                 df = df.dropna(subset=[col_super, 'FECHA_PARSED'])
                 
                 # Crear mapeo normalizado
