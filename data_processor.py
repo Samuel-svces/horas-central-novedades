@@ -317,72 +317,47 @@ def load_and_clean_data(file_source, preferred_sheet=None):
             f"Columnas encontradas: {df.columns.tolist()}"
         )
 
-    # Auto-completar NOMBRE SUPER VALIDADO
-    if col_name in df.columns:
-        known_supers = set(df[col_name].dropna().astype(str).str.strip().str.upper().unique())
-        try:
-            if isinstance(safe_source, pd.ExcelFile):
-                if 'SUPERNUMERARIOS' in safe_source.sheet_names:
-                    super_df = pd.read_excel(safe_source, sheet_name='SUPERNUMERARIOS')
-                    super_df.columns = [str(c).strip().upper() for c in super_df.columns]
-                    if 'NOMBRE' in super_df.columns:
-                        known_supers.update(super_df['NOMBRE'].dropna().astype(str).str.strip().str.upper().unique())
-            else:
-                if hasattr(safe_source, 'seek'):
-                    safe_source.seek(0)
-                if not isinstance(safe_source, str) or not safe_source.endswith(('.csv', '.CSV')):
-                    super_df = pd.read_excel(safe_source, sheet_name='SUPERNUMERARIOS', engine='calamine')
-                    super_df.columns = [str(c).strip().upper() for c in super_df.columns]
-                    if 'NOMBRE' in super_df.columns:
-                        known_supers.update(super_df['NOMBRE'].dropna().astype(str).str.strip().str.upper().unique())
-        except Exception:
-            pass
-        
-        known_supers = {n for n in known_supers if n and n.strip() != '' and n.upper() != 'NAN'}
-        known_supers_norm = set(normalize_name(n) for n in known_supers)
-        
-        # 1. Preferir la columna SUPERNUMERARIOS (el médico supernumerario que cubre la novedad)
-        if 'SUPERNUMERARIOS' in df.columns:
-            def fill_missing_from_supernumerarios(row):
-                val_super_val = row.get(col_name)
-                if pd.isna(val_super_val) or str(val_super_val).strip() == '' or str(val_super_val).strip().upper() == 'NAN':
-                    val_super = row.get('SUPERNUMERARIOS')
-                    if pd.notna(val_super) and str(val_super).strip() != '' and str(val_super).strip().upper() != 'NAN':
-                        super_norm = normalize_name(val_super)
-                        for name in known_supers:
-                            if normalize_name(name) == super_norm:
-                                return name
-                        return str(val_super).strip().upper()
-                return val_super_val
-            df[col_name] = df.apply(fill_missing_from_supernumerarios, axis=1)
+    # 4. Validar y filtrar NOMBRE SUPER VALIDADO únicamente desde su propia columna y confrontar contra BD PERSONAL
+    valid_personal_names = set()
+    try:
+        if isinstance(safe_source, pd.ExcelFile):
+            sheet_names = safe_source.sheet_names
+            for sname in sheet_names:
+                s_upper = str(sname).strip().upper()
+                if s_upper == 'BD PERSONAL':
+                    bd_df = pd.read_excel(safe_source, sheet_name=sname)
+                    bd_df.columns = [str(c).strip().upper() for c in bd_df.columns]
+                    for col_p in ['PROFESIONAL', 'NOMBRE', 'MEDICO', 'PROFESIONAL/NOMBRE']:
+                        if col_p in bd_df.columns:
+                            valid_personal_names.update(bd_df[col_p].dropna().astype(str).str.strip().tolist())
+                            break
+                elif s_upper == 'SUPERNUMERARIOS':
+                    sup_df = pd.read_excel(safe_source, sheet_name=sname)
+                    sup_df.columns = [str(c).strip().upper() for c in sup_df.columns]
+                    for col_s in ['NOMBRE', 'PROFESIONAL', 'SUPERNUMERARIO']:
+                        if col_s in sup_df.columns:
+                            valid_personal_names.update(sup_df[col_s].dropna().astype(str).str.strip().tolist())
+                            break
+    except Exception:
+        pass
 
-        # 2. Como fallback, usar la columna MEDICOS (para novedades propias del supernumerario, ej. incapacidades)
-        if 'MEDICOS' in df.columns:
-            def fill_missing_super_validated(row):
-                val_super = row.get(col_name)
-                if pd.isna(val_super) or str(val_super).strip() == '' or str(val_super).strip().upper() == 'NAN':
-                    val_medicos = row.get('MEDICOS')
-                    if pd.notna(val_medicos) and str(val_medicos).strip() != '' and str(val_medicos).strip().upper() != 'NAN':
-                        medicos_norm = normalize_name(val_medicos)
-                        for name in known_supers:
-                            if normalize_name(name) == medicos_norm:
-                                return name
-                        return str(val_medicos).strip().upper()
-                return val_super
-            df[col_name] = df.apply(fill_missing_super_validated, axis=1)
+    valid_personal_norm = set(normalize_name(n) for n in valid_personal_names if n and str(n).strip())
 
-    # 4. Filtrar y limpiar registros vacíos o no válidos de Médicos
+    # Filtrar y limpiar registros vacíos o no válidos de NOMBRE SUPER VALIDADO
     df = df[df[col_name].notnull()]
     df[col_name] = df[col_name].astype(str).str.strip()
     df = df[df[col_name] != '']
 
-    
-    # Excluir registros temporales, de eliminación o sin supernumerario
-    excluir_patterns = ['ELIMINAR', 'SIN SUPERNUMERARIO', 'SIN PROCESAR']
+    # Excluir registros temporales, de eliminación, sin agenda o sin supernumerario
+    excluir_patterns = ['ELIMINAR', 'SIN SUPERNUMERARIO', 'SIN PROCESAR', 'SIN AGENDA', 'SIN COBERTURA', 'VACIO']
     pattern_regex = '|'.join(excluir_patterns)
     df = df[~df[col_name].str.upper().str.contains(pattern_regex, na=False)]
-    # Adicionalmente, evitar registros que solo digan "SIN"
     df = df[df[col_name].str.upper() != 'SIN']
+
+    # Validar estrictamente que la persona exista en BD PERSONAL / SUPERNUMERARIOS
+    if valid_personal_norm:
+        df['_NORM_CHECK'] = df[col_name].apply(normalize_name)
+        df = df[df['_NORM_CHECK'].isin(valid_personal_norm)].drop(columns=['_NORM_CHECK'])
 
     # 5. Transformar y limpiar HORAS TOTALES DECIMAL y RECARGO NOCTURNO ORDINARIO
     df[col_horas] = pd.to_numeric(df[col_horas], errors='coerce')
