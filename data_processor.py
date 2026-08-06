@@ -349,11 +349,10 @@ def load_and_clean_data(file_source, preferred_sheet=None):
                     val_super = row.get('SUPERNUMERARIOS')
                     if pd.notna(val_super) and str(val_super).strip() != '' and str(val_super).strip().upper() != 'NAN':
                         super_norm = normalize_name(val_super)
-                        if super_norm in known_supers_norm:
-                            for name in known_supers:
-                                if normalize_name(name) == super_norm:
-                                    return name
-                            return str(val_super).strip().upper()
+                        for name in known_supers:
+                            if normalize_name(name) == super_norm:
+                                return name
+                        return str(val_super).strip().upper()
                 return val_super_val
             df[col_name] = df.apply(fill_missing_from_supernumerarios, axis=1)
 
@@ -365,11 +364,10 @@ def load_and_clean_data(file_source, preferred_sheet=None):
                     val_medicos = row.get('MEDICOS')
                     if pd.notna(val_medicos) and str(val_medicos).strip() != '' and str(val_medicos).strip().upper() != 'NAN':
                         medicos_norm = normalize_name(val_medicos)
-                        if medicos_norm in known_supers_norm:
-                            for name in known_supers:
-                                if normalize_name(name) == medicos_norm:
-                                        return name
-                            return str(val_medicos).strip().upper()
+                        for name in known_supers:
+                            if normalize_name(name) == medicos_norm:
+                                return name
+                        return str(val_medicos).strip().upper()
                 return val_super
             df[col_name] = df.apply(fill_missing_super_validated, axis=1)
 
@@ -408,6 +406,16 @@ def load_and_clean_data(file_source, preferred_sheet=None):
         df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
     else:
         df['FECHA_CLEAN'] = pd.NaT
+
+    # Fallback si en alguna fila la fecha en col_fecha está vacía (NaT): buscar en F FIN NOVEDAD, F INIC NOVEDAD o FECHA
+    date_fallback_cols = []
+    for col in df.columns:
+        col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        if col_norm in ['F FIN NOVEDAD', 'F INIC NOVEDAD', 'FECHA', 'FECHA DE NOVEDAD'] and col != col_fecha:
+            date_fallback_cols.append(col)
+
+    for fcol in date_fallback_cols:
+        df['FECHA_CLEAN'] = df['FECHA_CLEAN'].fillna(pd.to_datetime(df[fcol], dayfirst=True, errors='coerce'))
 
     # Filtrar solo registros del año 2026
     df = df[df['FECHA_CLEAN'].dt.year == 2026]
