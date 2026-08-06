@@ -469,6 +469,30 @@ def load_and_clean_data(file_source, preferred_sheet=None):
     for fcol in date_fallback_cols:
         df['FECHA_CLEAN'] = df['FECHA_CLEAN'].fillna(pd.to_datetime(df[fcol], dayfirst=True, errors='coerce'))
 
+    # Reconciliar inversión de Día/Mes producida por la serialización de Excel en fechas como 3/08/2026 (Marzo 8 vs Agosto 3):
+    # Comparar FECHA_CLEAN con F INIC NOVEDAD / F FIN NOVEDAD. Si la fecha de revisión quedó invertida (mes != mes novedad), corregir invirtiendo.
+    col_ref_novedad = None
+    for col in df.columns:
+        cnorm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
+        if cnorm in ['F INIC NOVEDAD', 'F FIN NOVEDAD', 'FECHA']:
+            col_ref_novedad = col
+            break
+
+    if col_ref_novedad:
+        ref_series = pd.to_datetime(df[col_ref_novedad], dayfirst=True, errors='coerce')
+        def reconcile_date(row):
+            d_clean = row['FECHA_CLEAN']
+            d_ref = ref_series.get(row.name)
+            if pd.notna(d_clean) and pd.notna(d_ref):
+                if d_clean.month != d_ref.month:
+                    if d_clean.day == d_ref.month and d_clean.month == d_ref.day:
+                        return pd.Timestamp(year=d_clean.year, month=d_clean.day, day=d_clean.month)
+                    elif d_clean.day <= 12 and d_clean.month <= 12 and d_ref.month != d_clean.month:
+                        return pd.Timestamp(year=d_clean.year, month=d_ref.month, day=d_clean.month if d_clean.month != d_ref.month else d_clean.day)
+            return d_clean
+
+        df['FECHA_CLEAN'] = df.apply(reconcile_date, axis=1)
+
     # Filtrar solo registros del año 2026
     df = df[df['FECHA_CLEAN'].dt.year == 2026]
         
