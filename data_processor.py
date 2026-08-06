@@ -317,8 +317,8 @@ def load_and_clean_data(file_source, preferred_sheet=None):
             f"Columnas encontradas: {df.columns.tolist()}"
         )
 
-    # 4. Validar NOMBRE SUPER VALIDADO contra BD PERSONAL
-    # Solo leer la lista de nombres válidos para poder filtrar basura (SIN AGENDA, etc.)
+    # 4. Validar Cédula y Nombre contra BD PERSONAL (Cédula -> Nombre)
+    bd_cedula_to_name = {}
     valid_personal_norm = set()
     try:
         if isinstance(safe_source, pd.ExcelFile):
@@ -328,25 +328,30 @@ def load_and_clean_data(file_source, preferred_sheet=None):
                 if s_upper == 'BD PERSONAL':
                     bd_df = pd.read_excel(safe_source, sheet_name=sname)
                     bd_df.columns = [str(c).strip().upper() for c in bd_df.columns]
-                    for col_p in ['PROFESIONAL', 'NOMBRE', 'MEDICO', 'PROFESIONAL/NOMBRE']:
-                        if col_p in bd_df.columns:
-                            valid_personal_norm.update(
-                                normalize_name(n) for n in bd_df[col_p].dropna().astype(str).str.strip()
-                            )
-                            break
+                    col_c = next((c for c in bd_df.columns if 'CEDULA' in c or 'CÉDULA' in c), None)
+                    col_n = next((c for c in bd_df.columns if 'PROFESIONAL' in c or 'NOMBRE' in c), None)
+                    if col_c and col_n:
+                        for _, r in bd_df.iterrows():
+                            c_str = str(r[col_c]).split('.')[0].strip()
+                            n_str = str(r[col_n]).strip()
+                            if c_str and c_str.upper() not in ['NAN', 'NONE', '']:
+                                bd_cedula_to_name[c_str] = n_str.upper()
+                                valid_personal_norm.add(normalize_name(n_str))
                 elif s_upper == 'SUPERNUMERARIOS':
                     sup_df = pd.read_excel(safe_source, sheet_name=sname)
                     sup_df.columns = [str(c).strip().upper() for c in sup_df.columns]
-                    for col_s in ['NOMBRE', 'PROFESIONAL', 'SUPERNUMERARIO']:
-                        if col_s in sup_df.columns:
-                            valid_personal_norm.update(
-                                normalize_name(n) for n in sup_df[col_s].dropna().astype(str).str.strip()
-                            )
-                            break
+                    col_c = next((c for c in sup_df.columns if 'CEDULA' in c or 'CÉDULA' in c), None)
+                    col_n = next((c for c in sup_df.columns if 'NOMBRE' in c or 'PROFESIONAL' in c), None)
+                    if col_c and col_n:
+                        for _, r in sup_df.iterrows():
+                            c_str = str(r[col_c]).split('.')[0].strip()
+                            n_str = str(r[col_n]).strip()
+                            if c_str and c_str.upper() not in ['NAN', 'NONE', '']:
+                                bd_cedula_to_name[c_str] = n_str.upper()
+                                valid_personal_norm.add(normalize_name(n_str))
     except Exception:
         pass
 
-    # Patrones de texto que indican filas SIN supernumerario asignado (comparación exacta o prefijo "SIN ")
     excluir_exactos = {'SIN', 'NAN', 'NONE', ''}
     excluir_prefijos = ['SIN ', 'ELIMINAR', 'VACIO']
 
@@ -359,28 +364,42 @@ def load_and_clean_data(file_source, preferred_sheet=None):
                 return True
         return False
 
-    def resolve_person_from_row(row):
-        # 1. Intentar con NOMBRE SUPER VALIDADO (fuente principal, nombre original de Excel)
+    col_ced_super = next((c for c in df.columns if 'CEDULA SUPERNUMERARIO' in str(c).upper() or 'CEDULA' in str(c).upper()), None)
+
+    def resolve_person_by_cedula(row):
+        # 1. Intentar validación directa por Cédula contra BD PERSONAL
+        if col_ced_super:
+            c_val = str(row.get(col_ced_super, '')).split('.')[0].strip()
+            if c_val in bd_cedula_to_name:
+                return bd_cedula_to_name[c_val], c_val
+
+        # 2. Si no coincide la Cédula, verificar NOMBRE SUPER VALIDADO contra BD PERSONAL
         val_v = row.get(col_name)
         if pd.notna(val_v) and not is_invalid_name(val_v):
             norm = normalize_name(val_v)
-            # Si tenemos BD PERSONAL, verificar que la persona existe; si no tenemos, aceptar todos
             if not valid_personal_norm or norm in valid_personal_norm:
-                return str(val_v).strip().upper()
+                c_val = str(row.get(col_ced_super, '')).split('.')[0].strip() if col_ced_super else ''
+                return str(val_v).strip().upper(), c_val
 
-        # 2. Fallback: columna SUPERNUMERARIOS (solo si está en BD PERSONAL)
+        # 3. Fallback a SUPERNUMERARIOS
         val_s = row.get('SUPERNUMERARIOS')
         if pd.notna(val_s) and not is_invalid_name(val_s):
             norm_s = normalize_name(val_s)
             if valid_personal_norm and norm_s in valid_personal_norm:
-                return str(val_s).strip().upper()
+                c_val = str(row.get(col_ced_super, '')).split('.')[0].strip() if col_ced_super else ''
+                return str(val_s).strip().upper(), c_val
 
-        return None
+        return None, None
 
-    df['_VALIDATED_PERSON'] = df.apply(resolve_person_from_row, axis=1)
-    df = df[df['_VALIDATED_PERSON'].notnull()].copy()
-    df[col_name] = df['_VALIDATED_PERSON']
-    df = df.drop(columns=['_VALIDATED_PERSON'])
+    res_person = df.apply(resolve_person_by_cedula, axis=1)
+    df['_VALIDATED_NAME'] = [r[0] for r in res_person]
+    df['_VALIDATED_CED'] = [r[1] for r in res_person]
+
+    df = df[df['_VALIDATED_NAME'].notnull()].copy()
+    df[col_name] = df['_VALIDATED_NAME']
+    if '_VALIDATED_CED' in df.columns and col_ced_super:
+        df[col_ced_super] = df['_VALIDATED_CED']
+    df = df.drop(columns=['_VALIDATED_NAME', '_VALIDATED_CED'])
 
     # 5. Transformar y limpiar HORAS TOTALES DECIMAL y RECARGO NOCTURNO ORDINARIO
     df[col_horas] = pd.to_numeric(df[col_horas], errors='coerce')
@@ -450,21 +469,14 @@ def load_and_clean_data(file_source, preferred_sheet=None):
     else:
         df['RECARGO NOCTURNO ORDINARIO'] = 0.0
 
-    # 6. Procesar Fechas y Meses
+    # 6. Procesar Fechas y Meses estrictamente desde la columna de fecha (REVISION POR CENTRAL DE NOVEDADES)
     if col_fecha:
         df['FECHA_CLEAN'] = pd.to_datetime(df[col_fecha], dayfirst=True, errors='coerce')
     else:
         df['FECHA_CLEAN'] = pd.NaT
 
-    # Fallback si en alguna fila la fecha en col_fecha está vacía (NaT): buscar en F FIN NOVEDAD, F INIC NOVEDAD o FECHA
-    date_fallback_cols = []
-    for col in df.columns:
-        col_norm = str(col).strip().upper().replace('Á', 'A').replace('É', 'E').replace('Í', 'I').replace('Ó', 'O').replace('Ú', 'U')
-        if col_norm in ['F FIN NOVEDAD', 'F INIC NOVEDAD', 'FECHA', 'FECHA DE NOVEDAD'] and col != col_fecha:
-            date_fallback_cols.append(col)
-
-    for fcol in date_fallback_cols:
-        df['FECHA_CLEAN'] = df['FECHA_CLEAN'].fillna(pd.to_datetime(df[fcol], dayfirst=True, errors='coerce'))
+    # Sin fallback de fecha a F INIC NOVEDAD / F FIN NOVEDAD
+    df = df[df['FECHA_CLEAN'].notnull()].copy()
 
     # Filtrar solo registros del año 2026
     df = df[df['FECHA_CLEAN'].dt.year == 2026]
