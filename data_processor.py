@@ -317,8 +317,9 @@ def load_and_clean_data(file_source, preferred_sheet=None):
             f"Columnas encontradas: {df.columns.tolist()}"
         )
 
-    # 4. Validar NOMBRE SUPER VALIDADO (o SUPERNUMERARIOS) únicamente si la persona existe en BD PERSONAL
-    valid_personal_names = set()
+    # 4. Validar NOMBRE SUPER VALIDADO contra BD PERSONAL
+    # Solo leer la lista de nombres válidos para poder filtrar basura (SIN AGENDA, etc.)
+    valid_personal_norm = set()
     try:
         if isinstance(safe_source, pd.ExcelFile):
             sheet_names = safe_source.sheet_names
@@ -329,58 +330,54 @@ def load_and_clean_data(file_source, preferred_sheet=None):
                     bd_df.columns = [str(c).strip().upper() for c in bd_df.columns]
                     for col_p in ['PROFESIONAL', 'NOMBRE', 'MEDICO', 'PROFESIONAL/NOMBRE']:
                         if col_p in bd_df.columns:
-                            valid_personal_names.update(bd_df[col_p].dropna().astype(str).str.strip().tolist())
+                            valid_personal_norm.update(
+                                normalize_name(n) for n in bd_df[col_p].dropna().astype(str).str.strip()
+                            )
                             break
                 elif s_upper == 'SUPERNUMERARIOS':
                     sup_df = pd.read_excel(safe_source, sheet_name=sname)
                     sup_df.columns = [str(c).strip().upper() for c in sup_df.columns]
                     for col_s in ['NOMBRE', 'PROFESIONAL', 'SUPERNUMERARIO']:
                         if col_s in sup_df.columns:
-                            valid_personal_names.update(sup_df[col_s].dropna().astype(str).str.strip().tolist())
+                            valid_personal_norm.update(
+                                normalize_name(n) for n in sup_df[col_s].dropna().astype(str).str.strip()
+                            )
                             break
     except Exception:
         pass
 
-    # Si no se pudo leer BD PERSONAL, se llena con los nombres únicos existentes que no sean patrones vacíos
-    if not valid_personal_names and col_name in df.columns:
-        valid_personal_names.update(df[col_name].dropna().astype(str).str.strip().tolist())
+    # Patrones de texto que indican filas SIN supernumerario asignado (comparación exacta o prefijo "SIN ")
+    excluir_exactos = {'SIN', 'NAN', 'NONE', ''}
+    excluir_prefijos = ['SIN ', 'ELIMINAR', 'VACIO']
 
-    valid_personal_norm = {normalize_name(n): str(n).strip().upper() for n in valid_personal_names if n and str(n).strip()}
+    def is_invalid_name(val_str):
+        v = str(val_str).strip().upper()
+        if v in excluir_exactos:
+            return True
+        for p in excluir_prefijos:
+            if v.startswith(p):
+                return True
+        return False
 
-    excluir_patterns = ['ELIMINAR', 'SIN SUPERNUMERARIO', 'SIN PROCESAR', 'SIN AGENDA', 'SIN COBERTURA', 'VACIO', 'SIN']
-
-    def validate_person_from_row(row):
-        # 1. Intentar con NOMBRE SUPER VALIDADO
+    def resolve_person_from_row(row):
+        # 1. Intentar con NOMBRE SUPER VALIDADO (fuente principal, nombre original de Excel)
         val_v = row.get(col_name)
-        if pd.notna(val_v):
-            val_v_str = str(val_v).strip().upper()
-            if val_v_str not in ['', 'NAN', 'NONE'] and not any(p in val_v_str for p in excluir_patterns):
-                norm = normalize_name(val_v)
-                if not valid_personal_norm or norm in valid_personal_norm:
-                    return valid_personal_norm.get(norm, val_v_str)
+        if pd.notna(val_v) and not is_invalid_name(val_v):
+            norm = normalize_name(val_v)
+            # Si tenemos BD PERSONAL, verificar que la persona existe; si no tenemos, aceptar todos
+            if not valid_personal_norm or norm in valid_personal_norm:
+                return str(val_v).strip().upper()
 
-        # 2. Si no es válido en NOMBRE SUPER VALIDADO, intentar con la columna SUPERNUMERARIOS
+        # 2. Fallback: columna SUPERNUMERARIOS (solo si está en BD PERSONAL)
         val_s = row.get('SUPERNUMERARIOS')
-        if pd.notna(val_s):
-            val_s_str = str(val_s).strip().upper()
-            if val_s_str not in ['', 'NAN', 'NONE'] and not any(p in val_s_str for p in excluir_patterns):
-                norm_s = normalize_name(val_s)
-                # SOLO aceptar de la columna SUPERNUMERARIOS si la persona existe en BD PERSONAL
-                if valid_personal_norm and norm_s in valid_personal_norm:
-                    return valid_personal_norm[norm_s]
-
-        # 3. Fallback a MEDICOS (solo si existe en BD PERSONAL)
-        val_m = row.get('MEDICOS')
-        if pd.notna(val_m):
-            val_m_str = str(val_m).strip().upper()
-            if val_m_str not in ['', 'NAN', 'NONE'] and not any(p in val_m_str for p in excluir_patterns):
-                norm_m = normalize_name(val_m)
-                if valid_personal_norm and norm_m in valid_personal_norm:
-                    return valid_personal_norm[norm_m]
+        if pd.notna(val_s) and not is_invalid_name(val_s):
+            norm_s = normalize_name(val_s)
+            if valid_personal_norm and norm_s in valid_personal_norm:
+                return str(val_s).strip().upper()
 
         return None
 
-    df['_VALIDATED_PERSON'] = df.apply(validate_person_from_row, axis=1)
+    df['_VALIDATED_PERSON'] = df.apply(resolve_person_from_row, axis=1)
     df = df[df['_VALIDATED_PERSON'].notnull()].copy()
     df[col_name] = df['_VALIDATED_PERSON']
     df = df.drop(columns=['_VALIDATED_PERSON'])
