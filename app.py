@@ -1216,4 +1216,4 @@ function sortTable(columnIndex){
 iframe_content = iframe_template.replace("__TABLE_HTML__", html_table)
 st.components.v1.html(iframe_content, height=450, scrolling=False)
 
-st.markdown("<div style='margin-top:25px;font-size:13px;color:#888888;'>© 2026 - San Vicente CES</div>", unsafe_allow_html=True)
+st.markdown("<div style='margin-top:25px;font-size:13px;color:#888888;'>© 2026 - Unión para la Salud y la Vida </div>", unsafe_allow_html=True)
