@@ -463,7 +463,10 @@ custom_css = r"""
     .element-container:has(.clear-btn) + .element-container button,
     .element-container:has(.export-btn) + .element-container button,
     .element-container:has(.search-btn) + .element-container button {
-        display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+        display: inline-flex !important; align-items: center !important; justify-content: center !important;
+        width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
+        margin: 0 !important; padding: 0 !important; border-radius: 10px !important; font-weight: 600 !important;
+        background-color: #ffffff !important; transition: all 0.2s ease !important; }
     .element-container:has(.clear-btn) + .element-container button *,
     .element-container:has(.export-btn) + .element-container button *,
     .element-container:has(.search-btn) + .element-container button * { display: none !important; }
@@ -476,33 +479,36 @@ custom_css = r"""
     .element-container:has(.search-btn) + .element-container button::after {
         font-family: "bootstrap-icons" !important; content: "\F52A" !important;
         font-size: 18px !important; visibility: visible !important; color: inherit !important; }
+    /* 1. Botón Buscar: blanco con borde e icono turquesa, hover/click turquesa sólido */
+    .element-container:has(.search-btn) + .element-container button {
+        background-color: #ffffff !important; color: #199596 !important;
+        border: 1.5px solid #199596 !important;
+        box-shadow: 0 1px 3px rgba(25, 149, 150, 0.1) !important; }
+    .element-container:has(.search-btn) + .element-container button:hover,
+    .element-container:has(.search-btn) + .element-container button:active,
+    .element-container:has(.search-btn) + .element-container button:focus {
+        background-color: #199596 !important; border-color: #199596 !important; color: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(25, 149, 150, 0.35) !important; transform: translateY(-1px) !important; }
+    /* 2. Botón Limpiar: blanco con borde e icono rojo, hover/click rojo sólido */
     .element-container:has(.clear-btn) + .element-container button {
         background-color: #ffffff !important; color: #ef4444 !important;
-        border: 1.5px solid #fca5a5 !important; border-radius: 10px !important;
-        width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
-        margin-top: 4px !important; font-weight: 600; box-shadow: 0 2px 4px rgba(239, 68, 68, 0.08) !important;
-        transition: all 0.2s ease; }
-    .element-container:has(.clear-btn) + .element-container button:hover {
-        background-color: #fef2f2 !important; border-color: #f87171 !important; color: #dc2626 !important;
-        box-shadow: 0 3px 8px rgba(239, 68, 68, 0.15) !important; transform: translateY(-1px); }
+        border: 1.5px solid #fca5a5 !important;
+        box-shadow: 0 1px 3px rgba(239, 68, 68, 0.08) !important; }
+    .element-container:has(.clear-btn) + .element-container button:hover,
+    .element-container:has(.clear-btn) + .element-container button:active,
+    .element-container:has(.clear-btn) + .element-container button:focus {
+        background-color: #ef4444 !important; border-color: #ef4444 !important; color: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3) !important; transform: translateY(-1px) !important; }
+    /* 3. Botón Exportar: blanco con borde e icono verde lima, hover/click verde lima sólido */
     .element-container:has(.export-btn) + .element-container button {
-        background-color: #85be26 !important; color: #ffffff !important;
-        border: 1.5px solid #85be26 !important; border-radius: 10px !important;
-        width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
-        margin-top: 4px !important; font-weight: 600; box-shadow: 0 2px 5px rgba(133, 190, 38, 0.25) !important;
-        transition: all 0.2s ease; }
-    .element-container:has(.export-btn) + .element-container button:hover {
-        background-color: #72a420 !important; border-color: #72a420 !important; color: #ffffff !important;
-        box-shadow: 0 4px 10px rgba(133, 190, 38, 0.35) !important; transform: translateY(-1px); }
-    .element-container:has(.search-btn) + .element-container button {
-        background-color: #199596 !important; color: #ffffff !important;
-        border: 1.5px solid #199596 !important; border-radius: 10px !important;
-        width: 100% !important; height: 38px !important; min-height: 38px !important; max-height: 38px !important;
-        margin-top: 4px !important; font-weight: 600; box-shadow: 0 2px 5px rgba(25, 149, 150, 0.25) !important;
-        transition: all 0.2s ease; }
-    .element-container:has(.search-btn) + .element-container button:hover {
-        background-color: #137a7b !important; border-color: #137a7b !important; color: #ffffff !important;
-        box-shadow: 0 4px 10px rgba(25, 149, 150, 0.35) !important; transform: translateY(-1px); }
+        background-color: #ffffff !important; color: #85be26 !important;
+        border: 1.5px solid #85be26 !important;
+        box-shadow: 0 1px 3px rgba(133, 190, 38, 0.1) !important; }
+    .element-container:has(.export-btn) + .element-container button:hover,
+    .element-container:has(.export-btn) + .element-container button:active,
+    .element-container:has(.export-btn) + .element-container button:focus {
+        background-color: #85be26 !important; border-color: #85be26 !important; color: #ffffff !important;
+        box-shadow: 0 4px 10px rgba(133, 190, 38, 0.35) !important; transform: translateY(-1px) !important; }
     /* ── Tarjetas de Métricas (Referencia Imagen 3) ─────────────────── */
     .kpi-cards-grid {
         display: flex !important;
@@ -698,7 +704,19 @@ custom_css = r"""
         box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important; margin-bottom: 16px !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
-    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] {
+        min-width: 0px !important; display: flex !important; flex-direction: column !important; justify-content: flex-end !important; }
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] > div {
+        display: flex !important; flex-direction: column !important; justify-content: flex-end !important; }
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) div.stButton,
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) div.stDownloadButton,
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) div[data-testid="stSelectbox"],
+    div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) div[data-testid="stMultiSelect"] {
+        margin: 0 !important; padding: 0 !important; }
+    .filter-label {
+        font-size: 13.5px !important; font-weight: 600 !important; color: #202124 !important;
+        margin-bottom: 5px !important; line-height: 18px !important; height: 18px !important;
+        display: block !important; overflow: hidden !important; white-space: nowrap !important; }
     .table-scroll-container { max-height: 440px; overflow-y: auto; overflow-x: auto;
         border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);
         background: #ffffff; margin-top: 10px; margin-bottom: 15px; }
@@ -1082,17 +1100,17 @@ meses_disponibles = sorted(
 
 with st.container(border=True):
     st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
-    c1, c2, c3, c4, c5, c6 = st.columns([3, 3, 3, 0.6, 0.6, 0.6], gap="small")
+    c1, c2, c3, c4, c5, c6 = st.columns([3, 3, 3, 0.6, 0.6, 0.6], gap="small", vertical_alignment="bottom")
 
     with c1:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:4px; line-height:1.2;'>Agrupar por:</div>", unsafe_allow_html=True)
+        st.markdown("<div class='filter-label'>Agrupar por:</div>", unsafe_allow_html=True)
         agrupacion_options = ["Por Día", "Por Semana", "Por Mes"]
         agrupacion_idx = agrupacion_options.index(st.session_state.agrupacion_sel_draft) if st.session_state.agrupacion_sel_draft in agrupacion_options else 0
         agrupacion_sel_draft = st.selectbox("Agrupar por:", options=agrupacion_options, index=agrupacion_idx, key="agrupacion_sel_draft_widget", label_visibility="collapsed")
         st.session_state.agrupacion_sel_draft = agrupacion_sel_draft
 
     with c2:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:4px; line-height:1.2;'>Mes:</div>", unsafe_allow_html=True)
+        st.markdown("<div class='filter-label'>Mes:</div>", unsafe_allow_html=True)
         active_keys = [k for k in st.session_state.keys() if k.startswith("mes_sel_draft_widget_")]
         num_items = 0
         if active_keys:
@@ -1111,7 +1129,7 @@ with st.container(border=True):
     nombres_disponibles = sorted(df_para_filtros['NOMBRE SUPER VALIDADO'].dropna().unique().tolist())
 
     with c3:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:#202124; margin-bottom:4px; line-height:1.2;'>Supernumerario:</div>", unsafe_allow_html=True)
+        st.markdown("<div class='filter-label'>Supernumerario:</div>", unsafe_allow_html=True)
         active_nom_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
         num_nom_items = 0
         if active_nom_keys:
@@ -1129,7 +1147,7 @@ with st.container(border=True):
         st.session_state.nombre_sel_draft = nombres_sel_draft
 
     with c4:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:transparent; margin-bottom:4px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div class='filter-label' style='visibility:hidden;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="search-btn">', unsafe_allow_html=True)
         if st.button("Buscar", key="btn_search", use_container_width=True):
             st.session_state.mes_sel = st.session_state.mes_sel_draft
@@ -1139,13 +1157,13 @@ with st.container(border=True):
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c5:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:transparent; margin-bottom:4px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div class='filter-label' style='visibility:hidden;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="clear-btn">', unsafe_allow_html=True)
         st.button("Borrar Filtro Supernumerario", key="btn_clear", help="Borrar filtro Supernumerario", use_container_width=True, on_click=clear_nombre)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with c6:
-        st.markdown("<div style='font-size:14px; font-weight:600; color:transparent; margin-bottom:4px; line-height:1.2;'>&nbsp;</div>", unsafe_allow_html=True)
+        st.markdown("<div class='filter-label' style='visibility:hidden;'>&nbsp;</div>", unsafe_allow_html=True)
         st.markdown('<div class="export-btn">', unsafe_allow_html=True)
         cols_to_export_det = [c for c in detalle_cols_base if c in df_filtrado.columns]
         daily_targets = st.session_state.get('daily_targets', {})
