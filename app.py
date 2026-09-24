@@ -772,12 +772,14 @@ custom_css = r"""
         background: #ffffff; margin-top: 10px; margin-bottom: 15px; }
     .custom-table { width: 100%; border-collapse: collapse; font-size: 12.5px;
         color: #334155; background-color: #ffffff; }
-    .custom-table th { background-color: #ffffff !important; color: #0f766e !important;
+    .custom-table th { background-color: #f0fbfb !important; color: #111827 !important;
         font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;
-        padding: 13px 14px; border-bottom: 2.5px solid #14b8a6 !important;
+        padding: 13px 14px; border-bottom: 2px solid #0f9a9b !important;
         border-top: none; border-left: none; border-right: none;
         position: sticky; top: 0; z-index: 10; white-space: nowrap; }
-    .custom-table th, .custom-table th * { color: #0f766e !important; }
+    .custom-table th { color: #111827 !important; }
+    .custom-table th:hover { background-color: #e5f6f6 !important; }
+    .custom-table th .sort-icon { color: #14b8a6 !important; opacity: 0.65 !important; font-size: 10px !important; margin-left: 5px !important; }
     .custom-table td { padding: 11px 16px; border-bottom: 1px solid #f1f5f9;
         border-top: none; border-left: none; border-right: none;
         vertical-align: middle; color: #1e293b !important; }
@@ -1409,7 +1411,7 @@ th_index = 0
 def add_onclick_to_th(match):
     global th_index
     content = match.group(1)
-    res = f'<th onclick="sortTable({th_index})" style="cursor:pointer;user-select:none;" title="Haz clic para ordenar">{content} <span style="font-size:10px; opacity:0.35; color:#14b8a6;">▲▼</span></th>'
+    res = f'<th onclick="sortTable({th_index})" style="cursor:pointer;user-select:none;" title="Haz clic para ordenar">{content} <span class="sort-icon">▲▼</span></th>'
     th_index += 1
     return res
 
@@ -1422,9 +1424,9 @@ iframe_template = r"""<!DOCTYPE html><html><head>
 body{margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif;background-color:transparent;}
 .table-scroll-container{max-height:440px;overflow-y:auto;overflow-x:auto;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);background:#ffffff;}
 .custom-table{width:100%;border-collapse:collapse;font-size:12.5px;color:#334155;background-color:#ffffff;}
-.custom-table th{background-color:#ffffff!important;color:#0f766e!important;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;padding:13px 14px;border-bottom:2.5px solid #14b8a6!important;border-top:none;border-left:none;border-right:none;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;text-align:center!important;white-space:nowrap;}
-.custom-table th *{color:#0f766e!important;}
-.custom-table th:hover{background-color:#f8fafc!important;}
+.custom-table th{background-color:#f0fbfb!important;color:#111827!important;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;padding:13px 14px;border-bottom:2px solid #0f9a9b!important;border-top:none;border-left:none;border-right:none;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;text-align:center!important;white-space:nowrap;}
+.custom-table th:hover{background-color:#e5f6f6!important;}
+.custom-table th .sort-icon{color:#14b8a6!important;opacity:0.65!important;font-size:10px!important;margin-left:5px!important;}
 .custom-table td{padding:12px 14px;border-bottom:1px solid #f1f5f9;border-top:none;border-left:none;border-right:none;vertical-align:middle;color:#334155!important;text-align:center!important;line-height:1.4;}
 .custom-table tr:hover td{background-color:#f0fdfa!important;}
 </style>
