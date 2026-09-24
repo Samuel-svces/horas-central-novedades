@@ -1019,28 +1019,28 @@ with st.container():
 
     with col_config:
         with st.popover("", help="Configuración de Origen de Datos"):
-            st.markdown("<h3 style='margin:0 0 10px 0; font-family:Outfit,sans-serif; font-weight:700; color:#0b3c5d;'>⚙️ Configuración de Datos</h3>", unsafe_allow_html=True)
+            st.markdown("<h3 style='margin:0 0 10px 0; font-family:Outfit,sans-serif; font-weight:700; color:#0b3c5d;'>Configuración de Datos</h3>", unsafe_allow_html=True)
 
             if 'hist_loaded' in st.session_state:
                 if st.session_state.hist_loaded:
-                    st.success("✅ Archivo Histórico Cargado")
+                    st.success("Archivo Histórico Cargado")
                 else:
-                    st.error("❌ Archivo Histórico NO Cargado")
+                    st.error("Archivo Histórico NO Cargado")
 
             # Mostrar última actualización si existe
             if st.session_state.last_refresh:
-                st.info(f"🕐 Última carga: **{st.session_state.last_refresh}**")
+                st.info(f"Última carga: **{st.session_state.last_refresh}**")
 
             # Botón para recargar desde SharePoint (siempre visible)
             if get_onedrive_config():
-                if st.button("🔄 Recargar desde SharePoint", use_container_width=True):
+                if st.button("Recargar desde SharePoint", use_container_width=True):
                     st.session_state.df_raw = None
                     st.session_state.load_error = None
                     cargar_desde_onedrive(force_refresh=True)
                     st.rerun()
             else:
                 # Solo en local: mostrar opciones manuales
-                st.warning("⚠️ Sin credenciales de OneDrive. Modo local activo.")
+                st.warning("Sin credenciales de OneDrive. Modo local activo.")
                 file_path = st.text_input(
                     "Ruta del archivo local (.xlsx):",
                     key="file_path_input"
@@ -1050,9 +1050,9 @@ with st.container():
                     last_updated = datetime.fromtimestamp(mtime).strftime('%d/%m/%Y %I:%M:%S %p')
                     st.success(f"Archivo encontrado — Modificado: **{last_updated}**")
                 else:
-                    st.error("❌ Archivo no encontrado.")
+                    st.error("Archivo no encontrado.")
 
-                if st.button("🔄 Cargar desde ruta local", use_container_width=True):
+                if st.button("Cargar desde ruta local", use_container_width=True):
                     if os.path.exists(file_path):
                         try:
                             cargar_desde_ruta_local(file_path)
@@ -1102,7 +1102,7 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
         else:
             st.session_state.load_error = (
                 f"Archivo no encontrado: {file_path}\n"
-                "Usa el botón ⚙️ para cambiar la ruta o subir manualmente."
+                "Usa el botón de configuración para cambiar la ruta o subir manualmente."
             )
     else:
         st.session_state.load_error = (
@@ -1115,14 +1115,14 @@ if st.session_state.df_raw is None and st.session_state.load_error is None:
 if st.session_state.load_error:
     msg = st.session_state.load_error
     if "Permission denied" in msg or "Errno 13" in msg:
-        st.error("⚠️ **Archivo bloqueado:** Cierra el Excel o espera que OneDrive termine de sincronizar, luego usa ⚙️ → Recargar.")
+        st.error("**Archivo bloqueado:** Cierra el Excel o espera que OneDrive termine de sincronizar, luego usa Configuración → Recargar.")
     else:
-        st.error(f"⚠️ Error de carga: {msg}")
-    st.info("💡 Usa el botón ⚙️ arriba a la izquierda para recargar o cambiar el origen de datos.")
+        st.error(f"Error de carga: {msg}")
+    st.info("Usa el botón de configuración arriba a la izquierda para recargar o cambiar el origen de datos.")
     st.stop()
 
 if st.session_state.df_raw is None:
-    st.info("⏳ Cargando datos...")
+    st.info("Cargando datos...")
     st.stop()
 
 df_raw = st.session_state.df_raw
