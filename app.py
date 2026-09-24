@@ -433,7 +433,7 @@ custom_css = r"""
     html, body, [class*="st-"], [class*="stWidget"], [class*="stSelectbox"], [class*="stMultiSelect"],
     [class*="stMarkdown"], label, p, [data-baseweb="select"] *,
     div[role="listbox"] *, button, .stButton button, [data-testid="stSidebar"] * {
-        font-family: 'Plus Jakarta Sans', sans-serif; color: #202124;
+        font-family: 'Plus Jakarta Sans', sans-serif; color: #202124 !important;
     }
     
     h1, h2, h3, h4, h5, h6 {
@@ -597,7 +597,7 @@ custom_css = r"""
     .header-banner-marker { display: none !important; }
     div.element-container:has(.header-banner-marker) { display: none !important; }
     
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) {
         background: linear-gradient(90deg, #070e1b 0%, #102136 25%, #254668 50%, #5d7d9a 75%, #97acbe 100%) !important;
         border: none !important;
         border-radius: 8px !important;
@@ -606,13 +606,8 @@ custom_css = r"""
         margin-bottom: 25px !important;
     }
 
-    .header-main-title,
-    .header-main-title *,
-    h1.header-main-title,
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) h1,
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) h1 *,
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) [data-testid="stMarkdownContainer"] *,
-    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) h1 {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) h1,
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) h1 * {
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
         font-family: 'Outfit', sans-serif !important;
@@ -622,12 +617,7 @@ custom_css = r"""
         line-height: 1.2 !important;
     }
 
-    .header-main-title a,
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) h1 a {
-        display: none !important;
-    }
-
-    div[data-testid="stVerticalBlock"]:has(.header-banner-marker) button[data-testid="stPopoverButton"] {
+    div[data-testid="stVerticalBlock"]:has(> div.element-container .header-banner-marker) button[data-testid="stPopoverButton"] {
         background-color: #122137 !important;
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
         color: #ffffff !important;
@@ -884,7 +874,7 @@ with st.container():
 
     with col_title:
         st.markdown(
-            "<h1 class='header-main-title' style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; font-size:28px; margin:0;'>Control de horas Central de novedades</h1>",
+            "<h1 style='font-family:\"Outfit\",sans-serif; font-weight:700; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important; font-size:28px; margin:0;'><span style='color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;'>Control de horas Central de novedades</span></h1>",
             unsafe_allow_html=True
         )
 
