@@ -503,24 +503,126 @@ custom_css = r"""
     .element-container:has(.search-btn) + .element-container button:hover {
         background-color: #137a7b !important; border-color: #137a7b !important; color: #ffffff !important;
         box-shadow: 0 4px 10px rgba(25, 149, 150, 0.35) !important; transform: translateY(-1px); }
-    .totals-inline-bar { display: flex !important; justify-content: center !important;
-        align-items: center !important; flex-wrap: wrap !important;
-        background-color: #ffffff !important; padding: 10px 16px !important;
-        border-radius: 10px !important; border: 1px solid #e2e8f0 !important;
-        margin-top: 10px !important; margin-bottom: 20px !important;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.03) !important; gap: 8px 24px !important; width: 100% !important; }
-    .totals-inline-item { display: flex !important; align-items: center !important; flex-shrink: 0 !important; }
-    .totals-inline-label { font-size: 12px !important; font-weight: 700 !important;
-        color: #475569 !important; text-transform: uppercase !important; letter-spacing: 0.5px !important;
-        white-space: nowrap !important; flex-shrink: 0 !important; }
-    .totals-inline-badge { padding: 4px 10px !important; border-radius: 6px !important;
-        color: #ffffff !important; font-weight: 700 !important; font-size: 13px !important;
-        margin-left: 6px !important; white-space: nowrap !important; flex-shrink: 0 !important; }
-    .badge-blue { background-color: #199596 !important; }
-    .badge-green { background-color: #85be26 !important; }
-    .badge-yellow { background-color: #f59e0b !important; }
-    .badge-red { background-color: #ef4444 !important; }
-    .badge-purple { background-color: #6366f1 !important; }
+    /* ── Tarjetas de Métricas (Referencia Imagen 3) ─────────────────── */
+    .kpi-cards-grid {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+        margin-top: 10px !important;
+        margin-bottom: 18px !important;
+        width: 100% !important;
+    }
+    .kpi-metric-card {
+        flex: 1 1 calc(16.666% - 12px) !important;
+        min-width: 150px !important;
+        background: #ffffff !important;
+        border-radius: 12px !important;
+        padding: 10px 14px !important;
+        display: flex !important;
+        align-items: center !important;
+        gap: 12px !important;
+        position: relative !important;
+        overflow: hidden !important;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+        transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+        box-sizing: border-box !important;
+    }
+    .kpi-metric-card:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06) !important;
+    }
+    .kpi-metric-card::after {
+        content: '' !important;
+        position: absolute !important;
+        right: -14px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 48px !important;
+        height: 48px !important;
+        border-radius: 50% !important;
+        opacity: 0.12 !important;
+        pointer-events: none !important;
+    }
+    .kpi-card-icon {
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 9px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #ffffff !important;
+        font-size: 17px !important;
+        flex-shrink: 0 !important;
+    }
+    .kpi-card-content {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        min-width: 0 !important;
+        z-index: 1 !important;
+    }
+    .kpi-card-value {
+        font-size: 19px !important;
+        font-weight: 800 !important;
+        line-height: 1.15 !important;
+        white-space: nowrap !important;
+    }
+    .kpi-card-label {
+        font-size: 9.5px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.5px !important;
+        text-transform: uppercase !important;
+        margin-top: 3px !important;
+        white-space: nowrap !important;
+    }
+    .kpi-card-medicos { border: 1.5px solid #99f6e4 !important; }
+    .kpi-card-medicos .kpi-card-icon { background-color: #199596 !important; }
+    .kpi-card-medicos .kpi-card-value { color: #0f766e !important; }
+    .kpi-card-medicos .kpi-card-label { color: #14b8a6 !important; }
+    .kpi-card-medicos::after { background-color: #14b8a6 !important; }
+
+    .kpi-card-laborar { border: 1.5px solid #cbd5e1 !important; }
+    .kpi-card-laborar .kpi-card-icon { background-color: #1e293b !important; }
+    .kpi-card-laborar .kpi-card-value { color: #0f172a !important; }
+    .kpi-card-laborar .kpi-card-label { color: #64748b !important; }
+    .kpi-card-laborar::after { background-color: #1e293b !important; }
+
+    .kpi-card-laboradas { border: 1.5px solid #bef264 !important; }
+    .kpi-card-laboradas .kpi-card-icon { background-color: #85be26 !important; }
+    .kpi-card-laboradas .kpi-card-value { color: #4d7c0f !important; }
+    .kpi-card-laboradas .kpi-card-label { color: #65a30d !important; }
+    .kpi-card-laboradas::after { background-color: #85be26 !important; }
+
+    .kpi-card-diferencia-pos { border: 1.5px solid #bbf7d0 !important; }
+    .kpi-card-diferencia-pos .kpi-card-icon { background-color: #10b981 !important; }
+    .kpi-card-diferencia-pos .kpi-card-value { color: #047857 !important; }
+    .kpi-card-diferencia-pos .kpi-card-label { color: #059669 !important; }
+    .kpi-card-diferencia-pos::after { background-color: #10b981 !important; }
+
+    .kpi-card-diferencia-neg { border: 1.5px solid #fecaca !important; }
+    .kpi-card-diferencia-neg .kpi-card-icon { background-color: #ef4444 !important; }
+    .kpi-card-diferencia-neg .kpi-card-value { color: #b91c1c !important; }
+    .kpi-card-diferencia-neg .kpi-card-label { color: #dc2626 !important; }
+    .kpi-card-diferencia-neg::after { background-color: #ef4444 !important; }
+
+    .kpi-card-diferencia-zero { border: 1.5px solid #fde68a !important; }
+    .kpi-card-diferencia-zero .kpi-card-icon { background-color: #f59e0b !important; }
+    .kpi-card-diferencia-zero .kpi-card-value { color: #b45309 !important; }
+    .kpi-card-diferencia-zero .kpi-card-label { color: #d97706 !important; }
+    .kpi-card-diferencia-zero::after { background-color: #f59e0b !important; }
+
+    .kpi-card-recargo { border: 1.5px solid #fed7aa !important; }
+    .kpi-card-recargo .kpi-card-icon { background-color: #f59e0b !important; }
+    .kpi-card-recargo .kpi-card-value { color: #b45309 !important; }
+    .kpi-card-recargo .kpi-card-label { color: #d97706 !important; }
+    .kpi-card-recargo::after { background-color: #f59e0b !important; }
+
+    .kpi-card-novedades { border: 1.5px solid #fca5a5 !important; }
+    .kpi-card-novedades .kpi-card-icon { background-color: #ef4444 !important; }
+    .kpi-card-novedades .kpi-card-value { color: #b91c1c !important; }
+    .kpi-card-novedades .kpi-card-label { color: #ef4444 !important; }
+    .kpi-card-novedades::after { background-color: #ef4444 !important; }
+
     /* ── Selectbox (dropdown simple) ─────────────────────────────────── */
     div[data-testid="stSelectbox"] > div > div {
         border: 1.5px solid #d1d5db !important; background-color: #ffffff !important;
@@ -555,18 +657,39 @@ custom_css = r"""
     div[data-testid="stMultiSelect"] [data-baseweb="select"] { border: none !important; box-shadow: none !important; }
     div[data-testid="stMultiSelect"] [data-baseweb="select"],
     div[data-testid="stMultiSelect"] [data-baseweb="select"] > div { background-color: #ffffff !important; }
-    /* ── Tags: texto completo sin truncar, fondo turquesa suave, letra teal ──── */
-    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] {
-        background-color: #f0fdfa !important; border: 1px solid #99f6e4 !important;
-        border-radius: 6px !important; flex-shrink: 0 !important;
+    /* ── Tags de multiselect (Mes y Supernumerario) ──────────────────── */
+    div[data-testid="stMultiSelect"] [data-baseweb="tag"],
+    div[data-testid="stMultiSelect"] span[data-baseweb="tag"],
+    div[data-baseweb="select"] [data-baseweb="tag"],
+    [data-baseweb="tag"] {
+        background-color: #199596 !important;
+        background: #199596 !important;
+        border: 1px solid #147a7b !important;
+        border-radius: 6px !important;
+        flex-shrink: 0 !important;
         height: 26px !important; min-height: 26px !important; max-height: 26px !important;
-        padding: 0 6px 0 8px !important; margin: 0 !important;
+        padding: 0 6px 0 8px !important; margin: 0 4px 0 0 !important;
         display: inline-flex !important; align-items: center !important; }
-    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] > span {
-        color: #0f766e !important; font-size: 12px !important; font-weight: 600 !important;
+    div[data-testid="stMultiSelect"] [data-baseweb="tag"] *,
+    div[data-testid="stMultiSelect"] [data-baseweb="tag"] span,
+    div[data-baseweb="select"] [data-baseweb="tag"] *,
+    [data-baseweb="tag"] *,
+    [data-baseweb="tag"] span {
+        color: #ffffff !important;
+        -webkit-text-fill-color: #ffffff !important;
+        font-size: 12px !important; font-weight: 600 !important;
         white-space: nowrap !important; line-height: 1 !important;
         max-width: none !important; overflow: visible !important; text-overflow: unset !important; }
-    div[data-testid="stMultiSelect"] span[data-baseweb="tag"] svg { fill: #0f766e !important; }
+    div[data-testid="stMultiSelect"] [data-baseweb="tag"] svg,
+    div[data-testid="stMultiSelect"] [data-baseweb="tag"] svg path,
+    [data-baseweb="tag"] svg,
+    [data-baseweb="tag"] svg path {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+        stroke: #ffffff !important; }
+    div[data-testid="stMultiSelect"] [data-baseweb="tag"]:hover {
+        background-color: #147a7b !important;
+        background: #147a7b !important; }
     /* ── Panel de filtros ──────────────────────────────────────────────── */
     .filter-panel-marker { display: none !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
@@ -576,16 +699,16 @@ custom_css = r"""
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="stHorizontalBlock"] {
         flex-wrap: nowrap !important; gap: 12px !important; align-items: flex-end !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) [data-testid="column"] { min-width: 0px !important; }
-    .table-scroll-container { max-height: 420px; overflow-y: auto; overflow-x: auto;
-        border: 1.5px solid #e2e8f0; border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-        margin-top: 10px; margin-bottom: 15px; }
-    .custom-table { width: 100%; border-collapse: collapse; font-size: 13px;
-        color: #1e293b; background-color: #ffffff; }
+    .table-scroll-container { max-height: 440px; overflow-y: auto; overflow-x: auto;
+        border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+        background: #ffffff; margin-top: 10px; margin-bottom: 15px; }
+    .custom-table { width: 100%; border-collapse: collapse; font-size: 12.5px;
+        color: #334155; background-color: #ffffff; }
     .custom-table th { background-color: #ffffff !important; color: #0f766e !important;
-        font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;
-        padding: 13px 16px; border-bottom: 2.5px solid #14b8a6 !important;
+        font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;
+        padding: 13px 14px; border-bottom: 2.5px solid #14b8a6 !important;
         border-top: none; border-left: none; border-right: none;
-        position: sticky; top: 0; z-index: 10; }
+        position: sticky; top: 0; z-index: 10; white-space: nowrap; }
     .custom-table th, .custom-table th * { color: #0f766e !important; }
     .custom-table td { padding: 11px 16px; border-bottom: 1px solid #f1f5f9;
         border-top: none; border-left: none; border-right: none;
@@ -1091,63 +1214,107 @@ if not tabla_consolidada_vista.empty:
     else:
         tot_recargo = 0.0
 
-    dif_badge_class = "badge-green" if tot_diferencia > 0 else ("badge-red" if tot_diferencia < 0 else "badge-yellow")
+    dif_card_class = "kpi-card-diferencia-pos" if tot_diferencia > 0 else ("kpi-card-diferencia-neg" if tot_diferencia < 0 else "kpi-card-diferencia-zero")
+    dif_icon = "bi-arrow-up-right" if tot_diferencia > 0 else ("bi-arrow-down-right" if tot_diferencia < 0 else "bi-dash")
     dif_sign = "+" if tot_diferencia > 0 else ""
     recargo_fmt = f"{tot_recargo:,.0f} hrs" if (tot_recargo % 1 == 0) else f"{tot_recargo:,.1f} hrs"
+
+    col_res1, col_res2 = st.columns([1, 1])
+    with col_res1:
+        st.markdown("<div style='font-size:15px; font-weight:700; color:#0f766e; display:flex; align-items:center; gap:8px;'><i class='bi bi-table'></i> Resultados</div>", unsafe_allow_html=True)
+    with col_res2:
+        st.markdown(f"<div style='text-align:right; font-size:13px; color:#64748b; font-weight:500;'>{len(tabla_consolidada_vista):,} registros</div>", unsafe_allow_html=True)
+
     st.markdown(
-        f'<div class="totals-inline-bar">'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">MÉDICOS ACTIVOS:</span><span class="totals-inline-badge badge-blue">{tot_medicos_activos:,}</span></div>'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">HORAS A LABORAR:</span><span class="totals-inline-badge badge-blue">{tot_horas_a_laborar:,.0f} hrs</span></div>'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">HORAS LABORADAS:</span><span class="totals-inline-badge badge-green">{tot_horas_laboradas:,.0f} hrs</span></div>'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">DIFERENCIA:</span><span class="totals-inline-badge {dif_badge_class}">{dif_sign}{tot_diferencia:,.0f} hrs</span></div>'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">RECARGO:</span><span class="totals-inline-badge badge-purple">{recargo_fmt}</span></div>'
-        f'<div class="totals-inline-item"><span class="totals-inline-label">NOVEDADES CUBIERTAS:</span><span class="totals-inline-badge badge-red">{tot_novedades:,}</span></div>'
-        f'</div>',
+        f'''
+        <div class="kpi-cards-grid">
+            <div class="kpi-metric-card kpi-card-medicos">
+                <div class="kpi-card-icon"><i class="bi bi-people-fill"></i></div>
+                <div class="kpi-card-content">
+                    <span class="kpi-card-value">{tot_medicos_activos:,}</span>
+                    <span class="kpi-card-label">MÉDICOS ACTIVOS</span>
+                </div>
+            </div>
+            <div class="kpi-metric-card kpi-card-laborar">
+                <div class="kpi-card-icon"><i class="bi bi-calendar-check-fill"></i></div>
+                <div class="kpi-card-content">
+                    <span class="kpi-card-value">{tot_horas_a_laborar:,.0f} hrs</span>
+                    <span class="kpi-card-label">HORAS A LABORAR</span>
+                </div>
+            </div>
+            <div class="kpi-metric-card kpi-card-laboradas">
+                <div class="kpi-card-icon"><i class="bi bi-clock-fill"></i></div>
+                <div class="kpi-card-content">
+                    <span class="kpi-card-value">{tot_horas_laboradas:,.0f} hrs</span>
+                    <span class="kpi-card-label">HORAS LABORADAS</span>
+                </div>
+            </div>
+            <div class="kpi-metric-card {dif_card_class}">
+                <div class="kpi-card-icon"><i class="bi {dif_icon}"></i></div>
+                <div class="kpi-card-content">
+                    <span class="kpi-card-value">{dif_sign}{tot_diferencia:,.0f} hrs</span>
+                    <span class="kpi-card-label">DIFERENCIA</span>
+                </div>
+            </div>
+            <div class="kpi-metric-card kpi-card-recargo">
+                <div class="kpi-card-icon"><i class="bi bi-hourglass-split"></i></div>
+                <div class="kpi-card-content">
+                    <span class="kpi-card-value">{recargo_fmt}</span>
+                    <span class="kpi-card-label">RECARGO</span>
+                </div>
+            </div>
+            <div class="kpi-metric-card kpi-card-novedades">
+                <div class="kpi-card-icon"><i class="bi bi-shield-fill-check"></i></div>
+                <div class="kpi-card-content">
+                    <span class="kpi-card-value">{tot_novedades:,}</span>
+                    <span class="kpi-card-label">NOVEDADES CUBIERTAS</span>
+                </div>
+            </div>
+        </div>
+        ''',
         unsafe_allow_html=True
     )
 
-st.caption(f"Mostrando {len(tabla_consolidada_vista)} filas en el resumen consolidado.")
-
 if agrupacion_vista == "Por Día":
     tabla_display = tabla_consolidada_vista.rename(columns={
-        'FECHA_STR': 'Fecha', 'CEDULA_FINAL': 'Cédula',
-        'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
-        'HORAS_A_LABORAR': 'Horas a laborar', 'HORAS_TOTALES': 'Horas Laboradas',
-        'TOTAL': 'Total', 'RECARGO_NOCTURNO': 'Recargo Nocturno',
-        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas',
-        'ESTADO': 'Estado'
+        'FECHA_STR': 'FECHA', 'CEDULA_FINAL': 'CÉDULA',
+        'NOMBRE SUPER VALIDADO': 'MÉDICO SUPERNUMERARIO',
+        'HORAS_A_LABORAR': 'HORAS A LABORAR', 'HORAS_TOTALES': 'HORAS LABORADAS',
+        'TOTAL': 'TOTAL', 'RECARGO_NOCTURNO': 'RECARGO NOCTURNO',
+        'CANTIDAD_NOVEDADES': 'NOVEDADES CUBIERTAS',
+        'ESTADO': 'ESTADO'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Fecha', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas', 'Estado']
+    cols_show = ['CÉDULA', 'MÉDICO SUPERNUMERARIO', 'FECHA', 'HORAS A LABORAR', 'HORAS LABORADAS', 'RECARGO NOCTURNO', 'TOTAL', 'NOVEDADES CUBIERTAS', 'ESTADO']
 elif agrupacion_vista == "Por Semana":
     tabla_display = tabla_consolidada_vista.rename(columns={
-        'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
-        'SEMANA': 'Semana', 'HORAS_A_LABORAR': 'Horas a laborar',
-        'HORAS_TOTALES': 'Horas Laboradas', 'TOTAL': 'Total',
-        'RECARGO_NOCTURNO': 'Recargo Nocturno',
-        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
+        'CEDULA_FINAL': 'CÉDULA', 'NOMBRE SUPER VALIDADO': 'MÉDICO SUPERNUMERARIO',
+        'SEMANA': 'SEMANA', 'HORAS_A_LABORAR': 'HORAS A LABORAR',
+        'HORAS_TOTALES': 'HORAS LABORADAS', 'TOTAL': 'TOTAL',
+        'RECARGO_NOCTURNO': 'RECARGO NOCTURNO',
+        'CANTIDAD_NOVEDADES': 'NOVEDADES CUBIERTAS'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Semana', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas']
+    cols_show = ['CÉDULA', 'MÉDICO SUPERNUMERARIO', 'SEMANA', 'HORAS A LABORAR', 'HORAS LABORADAS', 'RECARGO NOCTURNO', 'TOTAL', 'NOVEDADES CUBIERTAS']
 else:
     tabla_display = tabla_consolidada_vista.rename(columns={
-        'CEDULA_FINAL': 'Cédula', 'NOMBRE SUPER VALIDADO': 'Médico Supernumerario',
-        'MES': 'Mes', 'HORAS_A_LABORAR': 'Horas a laborar',
-        'HORAS_TOTALES': 'Horas Laboradas', 'TOTAL': 'Total',
-        'RECARGO_NOCTURNO': 'Recargo Nocturno',
-        'CANTIDAD_NOVEDADES': 'Novedades Cubiertas'
+        'CEDULA_FINAL': 'CÉDULA', 'NOMBRE SUPER VALIDADO': 'MÉDICO SUPERNUMERARIO',
+        'MES': 'MES', 'HORAS_A_LABORAR': 'HORAS A LABORAR',
+        'HORAS_TOTALES': 'HORAS LABORADAS', 'TOTAL': 'TOTAL',
+        'RECARGO_NOCTURNO': 'RECARGO NOCTURNO',
+        'CANTIDAD_NOVEDADES': 'NOVEDADES CUBIERTAS'
     })
-    cols_show = ['Cédula', 'Médico Supernumerario', 'Mes', 'Horas a laborar', 'Horas Laboradas', 'Recargo Nocturno', 'Total', 'Novedades Cubiertas']
+    cols_show = ['CÉDULA', 'MÉDICO SUPERNUMERARIO', 'MES', 'HORAS A LABORAR', 'HORAS LABORADAS', 'RECARGO NOCTURNO', 'TOTAL', 'NOVEDADES CUBIERTAS']
 
 tabla_display_formatted = tabla_display[cols_show].copy()
-for col in ['Horas a laborar', 'Horas Laboradas', 'Total', 'Novedades Cubiertas']:
+for col in ['HORAS A LABORAR', 'HORAS LABORADAS', 'TOTAL', 'NOVEDADES CUBIERTAS']:
     if col in tabla_display_formatted.columns:
         tabla_display_formatted[col] = pd.to_numeric(tabla_display_formatted[col], errors='coerce').fillna(0).round(0).astype(int)
 
-if 'Recargo Nocturno' in tabla_display_formatted.columns:
-    rec_vals = pd.to_numeric(tabla_display_formatted['Recargo Nocturno'], errors='coerce').fillna(0)
+if 'RECARGO NOCTURNO' in tabla_display_formatted.columns:
+    rec_vals = pd.to_numeric(tabla_display_formatted['RECARGO NOCTURNO'], errors='coerce').fillna(0)
     if (rec_vals % 1 == 0).all():
-        tabla_display_formatted['Recargo Nocturno'] = rec_vals.astype(int)
+        tabla_display_formatted['RECARGO NOCTURNO'] = rec_vals.astype(int)
     else:
-        tabla_display_formatted['Recargo Nocturno'] = rec_vals.round(1)
+        tabla_display_formatted['RECARGO NOCTURNO'] = rec_vals.round(1)
 
 html_table = tabla_display_formatted.to_html(index=False, classes='custom-table', escape=False)
 
@@ -1155,7 +1322,7 @@ th_index = 0
 def add_onclick_to_th(match):
     global th_index
     content = match.group(1)
-    res = f'<th onclick="sortTable({th_index})" style="cursor:pointer;user-select:none;" title="Haz clic para ordenar">{content}</th>'
+    res = f'<th onclick="sortTable({th_index})" style="cursor:pointer;user-select:none;" title="Haz clic para ordenar">{content} <span style="font-size:10px; opacity:0.35; color:#14b8a6;">▲▼</span></th>'
     th_index += 1
     return res
 
@@ -1164,14 +1331,15 @@ html_table = re.sub(r'<th>(.*?)</th>', add_onclick_to_th, html_table)
 iframe_template = r"""<!DOCTYPE html><html><head>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-body{margin:0;padding:0;font-family:'Inter',sans-serif;background-color:transparent;}
-.table-scroll-container{max-height:420px;overflow-y:auto;overflow-x:auto;border:1.5px solid #cccccc;border-radius:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);}
-.custom-table{width:100%;border-collapse:collapse;font-size:13.5px;color:#202124;background-color:#ffffff;}
-.custom-table th{background-color:#0f5ba6!important;color:#ffffff!important;font-weight:600;padding:12px 14px;border:1px solid #cbd5e1;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;text-align:center!important;}
-.custom-table td{padding:10px 14px;border:1px solid #cbd5e1;vertical-align:middle;color:#202124!important;text-align:center!important;}
-.custom-table tr:nth-child(even){background-color:#f8fafc;}
-.custom-table tr:hover td{background-color:#f1f5f9;}
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+body{margin:0;padding:0;font-family:'Plus Jakarta Sans',sans-serif;background-color:transparent;}
+.table-scroll-container{max-height:440px;overflow-y:auto;overflow-x:auto;border:1px solid #e2e8f0;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.03);background:#ffffff;}
+.custom-table{width:100%;border-collapse:collapse;font-size:12.5px;color:#334155;background-color:#ffffff;}
+.custom-table th{background-color:#ffffff!important;color:#0f766e!important;font-weight:700;font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;padding:13px 14px;border-bottom:2.5px solid #14b8a6!important;border-top:none;border-left:none;border-right:none;position:sticky;top:0;z-index:10;cursor:pointer;user-select:none;text-align:center!important;white-space:nowrap;}
+.custom-table th *{color:#0f766e!important;}
+.custom-table th:hover{background-color:#f8fafc!important;}
+.custom-table td{padding:12px 14px;border-bottom:1px solid #f1f5f9;border-top:none;border-left:none;border-right:none;vertical-align:middle;color:#334155!important;text-align:center!important;line-height:1.4;}
+.custom-table tr:hover td{background-color:#f0fdfa!important;}
 </style>
 <script>
 function sortTable(columnIndex){
@@ -1193,8 +1361,10 @@ function sortTable(columnIndex){
     rows.forEach(row=>tbody.appendChild(row));
     const headers=table.querySelectorAll("th");
     headers.forEach((th,idx)=>{
-        th.innerHTML=th.innerHTML.replace(/ <span style="font-size: 11px;">(▲|▼)<\/span>/g,"");
-        if(idx===columnIndex){th.innerHTML+=` <span style="font-size: 11px;">${dir==='asc'?'▲':'▼'}</span>`;}
+        th.innerHTML=th.innerHTML.replace(/ <span style="font-size: 10px; color: #14b8a6;">(▲|▼)<\/span>/g,"");
+        th.innerHTML=th.innerHTML.replace(/ <span style="font-size:10px; opacity:0.35; color:#14b8a6;">▲▼<\/span>/g,"");
+        if(idx===columnIndex){th.innerHTML+=` <span style="font-size: 10px; color: #14b8a6;">${dir==='asc'?'▲':'▼'}</span>`;}
+        else{th.innerHTML+=` <span style="font-size:10px; opacity:0.35; color:#14b8a6;">▲▼</span>`;}
     });
 }
 </script>

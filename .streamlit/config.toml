@@ -7,4 +7,8 @@ enableCORS = false
 gatherUsageStats = false
 
 [theme]
-base = "light"
+base = "light"
+primaryColor = "#199596"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f8faff"
+textColor = "#1e293b"
