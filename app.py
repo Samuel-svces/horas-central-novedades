@@ -8,36 +8,17 @@ import pandas as pd
 import os
 import io
 import platform
+import requests
 from datetime import datetime, timedelta, timezone
 
 def get_local_now():
     return datetime.now(timezone(timedelta(hours=-5)))
+
 import data_processor as dp
-import importlib
-importlib.reload(dp)
 import base64
 import re
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
-
-def save_to_downloads(data):
-    try:
-        import winreg
-        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                             r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders")
-        path, _ = winreg.QueryValueEx(key, "{374DE290-123F-4565-9164-39C4925E467B}")
-        downloads_path = os.path.expandvars(path)
-    except Exception:
-        downloads_path = os.path.join(os.path.expanduser("~"), "Downloads")
-    try:
-        filename = f"CONSOLIDADO_HORAS_SUPERNUMERARIOS_{get_local_now().strftime('%Y%m%d')}.xlsx"
-        full_path = os.path.join(downloads_path, filename)
-        with open(full_path, "wb") as f:
-            f.write(data)
-        st.toast(f"¡Excel guardado en Descargas como: {filename}!", icon="📥")
-    except Exception as e:
-        st.toast(f"No se pudo guardar en Descargas: {e}", icon="⚠️")
-
 
 def get_base64_image(image_path):
     if os.path.exists(image_path):
@@ -49,144 +30,142 @@ def get_base64_image(image_path):
 
 def get_onedrive_config():
     """
-    Lee las credenciales desde st.secrets (Streamlit Cloud) o variables de entorno (local).
+    Lee las credenciales de SharePoint desde st.secrets.
     Retorna None si no están configuradas → la app cae al modo local/manual.
-    Soporta dos modos:
-      - SharePoint por URL del sitio: usa SHAREPOINT_HOST + SHAREPOINT_SITE_PATH + SHAREPOINT_FILE_PATH
-      - OneDrive clásico: usa ONEDRIVE_DRIVE_ID + ONEDRIVE_FILE_ID
     """
     try:
         config = {
-            "tenant_id":     st.secrets["AZURE_TENANT_ID"],
-            "client_id":     st.secrets["AZURE_CLIENT_ID"],
+            "tenant_id": st.secrets["AZURE_TENANT_ID"],
+            "client_id": st.secrets["AZURE_CLIENT_ID"],
             "client_secret": st.secrets["AZURE_CLIENT_SECRET"],
+            "mode": "sharepoint",
+            "sharepoint_host": st.secrets["SHAREPOINT_HOST"],
+            "site_path": st.secrets["SHAREPOINT_SITE_PATH"],
+            "file_path": st.secrets["SHAREPOINT_FILE_PATH"],
         }
-        # Preferir método SharePoint por URL de sitio
-        if "SHAREPOINT_HOST" in st.secrets:
-            config["mode"] = "sharepoint"
-            config["sharepoint_host"] = st.secrets["SHAREPOINT_HOST"]
-            config["site_path"]        = st.secrets["SHAREPOINT_SITE_PATH"]
-            config["file_path"]        = st.secrets["SHAREPOINT_FILE_PATH"]
-            if "SHAREPOINT_FILE_PATH_HISTORIC" in st.secrets:
-                config["file_path_historic"] = st.secrets["SHAREPOINT_FILE_PATH_HISTORIC"]
-            else:
-                # Fallback automático a la ruta del archivo histórico si no viene explícita en st.secrets
-                config["file_path_historic"] = config["file_path"].replace("CONSOLIDADO 2026.xlsx", "CONSOLIDADO 2026 HISTORICO.xlsx")
+        if "SHAREPOINT_FILE_PATH_HISTORIC" in st.secrets:
+            config["file_path_historic"] = st.secrets["SHAREPOINT_FILE_PATH_HISTORIC"]
         else:
-            # Fallback al método clásico con drive_id y file_id
-            config["mode"]     = "onedrive"
-            config["drive_id"] = st.secrets["ONEDRIVE_DRIVE_ID"]
-            config["file_id"]  = st.secrets["ONEDRIVE_FILE_ID"]
+            config["file_path_historic"] = config["file_path"].replace("CONSOLIDADO 2026.xlsx", "CONSOLIDADO 2026 HISTORICO.xlsx")
         return config
     except Exception:
         return None
 
 
-def cargar_desde_onedrive():
-    """Descarga el Excel desde SharePoint/OneDrive y lo guarda en session_state."""
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_sharepoint_dataset(tenant_id, client_id, client_secret, sharepoint_host, site_path, file_path, file_path_historic):
+    """
+    Descarga y procesa los archivos de SharePoint de forma optimizada con caché en Streamlit (15 min).
+    Reutiliza la sesión HTTP y procesa los datos con el motor calamine.
+    """
+    session = requests.Session()
+    file_bytes_actual = dp.download_excel_from_sharepoint(
+        tenant_id=tenant_id,
+        client_id=client_id,
+        client_secret=client_secret,
+        sharepoint_host=sharepoint_host,
+        site_path=site_path,
+        file_drive_path=file_path,
+        session=session,
+    )
+    xl_actual = pd.ExcelFile(file_bytes_actual, engine='calamine')
+    df_raw_actual = dp.load_and_clean_data(xl_actual, preferred_sheet='CONSOLIDADO 2026 NOMINA')
+
+    df_raw_historico = None
+    xl_hist = None
+    hist_loaded = False
+    if file_path_historic:
+        try:
+            file_bytes_hist = dp.download_excel_from_sharepoint(
+                tenant_id=tenant_id,
+                client_id=client_id,
+                client_secret=client_secret,
+                sharepoint_host=sharepoint_host,
+                site_path=site_path,
+                file_drive_path=file_path_historic,
+                session=session,
+            )
+            xl_hist = pd.ExcelFile(file_bytes_hist, engine='calamine')
+            df_raw_historico = dp.load_and_clean_data(xl_hist, preferred_sheet='CONSOLIDADO 2026 NOMINA HISTORI')
+        except Exception:
+            pass
+
+    if df_raw_historico is not None and not df_raw_historico.empty:
+        meses_en_actual = set(df_raw_actual['MES_NUM'].dropna().unique())
+        df_raw_historico = df_raw_historico[~df_raw_historico['MES_NUM'].isin(meses_en_actual)]
+        df_raw = pd.concat([df_raw_historico, df_raw_actual], ignore_index=True)
+        hist_loaded = True
+    else:
+        df_raw = df_raw_actual
+
+    df_super_actual = dp.load_supernumerario_sheets(xl_actual)
+    df_super_hist = dp.load_supernumerario_sheets(xl_hist) if (df_raw_historico is not None and xl_hist is not None) else None
+    if df_super_hist is not None and not df_super_hist.empty:
+        if df_super_actual is not None and not df_super_actual.empty:
+            df_super = pd.concat([df_super_hist, df_super_actual], ignore_index=True).drop_duplicates()
+        else:
+            df_super = df_super_hist
+    else:
+        df_super = df_super_actual
+
+    plaza_actual = dp.load_plaza_fija_dates(xl_actual)
+    plaza_hist = dp.load_plaza_fija_dates(xl_hist) if (df_raw_historico is not None and xl_hist is not None) else {}
+    if plaza_hist:
+        plaza_hist.update(plaza_actual)
+        plaza_fija_dates = plaza_hist
+    else:
+        plaza_fija_dates = plaza_actual
+
+    m_targets, d_targets = dp.load_calendar_targets(xl_actual)
+
+    return df_raw, df_super, plaza_fija_dates, m_targets, d_targets, hist_loaded
+
+
+def cargar_desde_onedrive(force_refresh=False):
+    """Carga los datos desde SharePoint con caché optimizado y los guarda en session_state."""
     config = get_onedrive_config()
     if not config:
         st.session_state.load_error = (
-            "No se encontraron credenciales de SharePoint/OneDrive. "
+            "No se encontraron credenciales de SharePoint. "
             "Configura los Secrets en Streamlit Cloud o usa el modo manual."
         )
         return
 
+    if force_refresh:
+        fetch_sharepoint_dataset.clear()
+
     try:
-        spinner_msg = "Conectando con SharePoint..." if config.get("mode") == "sharepoint" else "Conectando con OneDrive..."
-        with st.spinner(spinner_msg):
-            if config.get("mode") == "sharepoint":
-                file_bytes_actual = dp.download_excel_from_sharepoint(
-                    tenant_id=config["tenant_id"],
-                    client_id=config["client_id"],
-                    client_secret=config["client_secret"],
-                    sharepoint_host=config["sharepoint_host"],
-                    site_path=config["site_path"],
-                    file_drive_path=config["file_path"],
-                )
-                xl_actual = pd.ExcelFile(file_bytes_actual, engine='calamine')
-                df_raw_actual = dp.load_and_clean_data(xl_actual, preferred_sheet='CONSOLIDADO 2026 NOMINA')
-                
-                df_raw_historico = None
-                xl_hist = None
-                if "file_path_historic" in config:
-                    try:
-                        file_bytes_hist = dp.download_excel_from_sharepoint(
-                            tenant_id=config["tenant_id"],
-                            client_id=config["client_id"],
-                            client_secret=config["client_secret"],
-                            sharepoint_host=config["sharepoint_host"],
-                            site_path=config["site_path"],
-                            file_drive_path=config["file_path_historic"],
-                        )
-                        xl_hist = pd.ExcelFile(file_bytes_hist, engine='calamine')
-                        df_raw_historico = dp.load_and_clean_data(xl_hist, preferred_sheet='CONSOLIDADO 2026 NOMINA HISTORI')
-                    except Exception as e:
-                        st.warning(f"Error cargando archivo historico: {e}")
-                
-                if df_raw_historico is not None and not df_raw_historico.empty:
-                    # Leer ambos archivos completos — sin filtro por mes.
-                    # Los meses que estén en el archivo actual tienen prioridad
-                    # (se eliminan del histórico si ya existen en el actual).
-                    meses_en_actual = set(df_raw_actual['MES_NUM'].dropna().unique())
-                    df_raw_historico = df_raw_historico[
-                        ~df_raw_historico['MES_NUM'].isin(meses_en_actual)
-                    ]
-                    st.session_state.df_raw = __import__('pandas').concat(
-                        [df_raw_historico, df_raw_actual], ignore_index=True
-                    )
-                    st.session_state.hist_loaded = True
-                else:
-                    st.session_state.df_raw = df_raw_actual
-                    st.session_state.hist_loaded = False
-                    
-                file_source_for_meta = xl_actual
-                xl_hist_for_meta = xl_hist
-            else:
-                raise ValueError("Modo OneDrive clásico no está implementado. Usa el modo SharePoint.")
-                
-            df_super_actual = dp.load_supernumerario_sheets(file_source_for_meta)
-            
-            df_super_hist = None
-            if df_raw_historico is not None and xl_hist_for_meta is not None:
-                try:
-                    df_super_hist = dp.load_supernumerario_sheets(xl_hist_for_meta)
-                except Exception as e:
-                    st.warning(f"Error cargando supernumerarios historico: {e}")
-                    
-            if df_super_hist is not None and not df_super_hist.empty:
-                if df_super_actual is not None and not df_super_actual.empty:
-                    st.session_state.df_super = __import__('pandas').concat([df_super_hist, df_super_actual], ignore_index=True).drop_duplicates()
-                else:
-                    st.session_state.df_super = df_super_hist
-            else:
-                st.session_state.df_super = df_super_actual
-                
-            plaza_actual = dp.load_plaza_fija_dates(file_source_for_meta)
-            
-            plaza_hist = {}
-            if df_raw_historico is not None and xl_hist_for_meta is not None:
-                try:
-                    plaza_hist = dp.load_plaza_fija_dates(xl_hist_for_meta)
-                except Exception as e:
-                    st.warning(f"Error cargando plaza fija historico: {e}")
-                    
-            # Combinar diccionarios (el actual sobreescribe al historico en caso de repetidos)
-            if plaza_hist:
-                plaza_hist.update(plaza_actual)
-                st.session_state.plaza_fija_dates = plaza_hist
-            else:
-                st.session_state.plaza_fija_dates = plaza_actual
-                
-            m_targets, d_targets = dp.load_calendar_targets(file_source_for_meta)
+        with st.spinner("Conectando con SharePoint..."):
+            (
+                df_raw,
+                df_super,
+                plaza_fija_dates,
+                m_targets,
+                d_targets,
+                hist_loaded
+            ) = fetch_sharepoint_dataset(
+                config["tenant_id"],
+                config["client_id"],
+                config["client_secret"],
+                config["sharepoint_host"],
+                config["site_path"],
+                config["file_path"],
+                config.get("file_path_historic", "")
+            )
+
+            st.session_state.df_raw = df_raw
+            st.session_state.df_super = df_super
+            st.session_state.plaza_fija_dates = plaza_fija_dates
             st.session_state.monthly_targets = m_targets
             st.session_state.daily_targets = d_targets
+            st.session_state.hist_loaded = hist_loaded
             st.session_state.load_error = None
             st.session_state.last_refresh = get_local_now().strftime('%d/%m/%Y %H:%M:%S')
     except Exception as e:
         st.session_state.df_raw = None
         st.session_state.df_super = None
         st.session_state.load_error = str(e)
+
 
 
 def calculate_doctor_target_hours(df_grouped, df_raw_filtered, daily_targets, monthly_targets, df_super=None):
@@ -454,7 +433,7 @@ custom_css = r"""
     html, body, [class*="st-"], [class*="stWidget"], [class*="stSelectbox"], [class*="stMultiSelect"],
     [class*="stMarkdown"], label, p, [data-baseweb="select"] *,
     div[role="listbox"] *, button, .stButton button, [data-testid="stSidebar"] * {
-        font-family: 'Plus Jakarta Sans', sans-serif; color: #202124 !important;
+        font-family: 'Plus Jakarta Sans', sans-serif; color: #202124;
     }
     
     h1, h2, h3, h4, h5, h6 {
@@ -743,7 +722,6 @@ def clear_nombre():
         if k.startswith("nombre_sel_draft_widget_"):
             del st.session_state[k]
 
-clear_super_y_mes = clear_nombre
 
 def on_change_nombre():
     active_keys = [k for k in st.session_state.keys() if k.startswith("nombre_sel_draft_widget_")]
@@ -837,20 +815,20 @@ with st.container():
 
             if 'hist_loaded' in st.session_state:
                 if st.session_state.hist_loaded:
-                    st.sidebar.success("✅ Archivo Histórico Cargado")
+                    st.success("✅ Archivo Histórico Cargado")
                 else:
-                    st.sidebar.error("❌ Archivo Histórico NO Cargado")
+                    st.error("❌ Archivo Histórico NO Cargado")
 
             # Mostrar última actualización si existe
             if st.session_state.last_refresh:
                 st.info(f"🕐 Última carga: **{st.session_state.last_refresh}**")
 
-            # Botón para recargar desde OneDrive (siempre visible)
+            # Botón para recargar desde SharePoint (siempre visible)
             if get_onedrive_config():
                 if st.button("🔄 Recargar desde SharePoint", use_container_width=True):
                     st.session_state.df_raw = None
                     st.session_state.load_error = None
-                    cargar_desde_onedrive()
+                    cargar_desde_onedrive(force_refresh=True)
                     st.rerun()
             else:
                 # Solo en local: mostrar opciones manuales
@@ -1042,9 +1020,7 @@ with st.container(border=True):
             file_name=f"CONSOLIDADO_HORAS_SUPERNUMERARIOS_{get_local_now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             key="btn_export",
-            use_container_width=True,
-            on_click=save_to_downloads,
-            args=(excel_data,)
+            use_container_width=True
         )
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -1169,7 +1145,6 @@ def add_onclick_to_th(match):
     th_index += 1
     return res
 
-th_index = 0
 html_table = re.sub(r'<th>(.*?)</th>', add_onclick_to_th, html_table)
 
 iframe_template = r"""<!DOCTYPE html><html><head>

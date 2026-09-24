@@ -14,6 +14,8 @@ import requests
 import msal
 import unicodedata
 import re
+import time
+import urllib.parse
 
 
 # Mapeo de meses de inglés/número a español
@@ -94,11 +96,20 @@ def get_safe_file_source(file_source):
     return safe_source, cleanup
 
 
+_token_cache = {}
+_site_drive_cache = {}
+
+
 def get_access_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     """
-    Obtiene un access token de Azure AD usando client credentials flow.
-    No requiere login del usuario — usa las credenciales de la app registrada.
+    Obtiene un access token de Azure AD usando client credentials flow con caché en memoria.
+    Reutiliza el token mientras sea válido (evita llamadas de red repetitivas).
     """
+    now = time.time()
+    cached = _token_cache.get(client_id)
+    if cached and cached.get("expires_at", 0) > now + 300:
+        return cached["token"]
+
     authority = f"https://login.microsoftonline.com/{tenant_id}"
     app = msal.ConfidentialClientApplication(
         client_id=client_id,
@@ -111,7 +122,65 @@ def get_access_token(tenant_id: str, client_id: str, client_secret: str) -> str:
     if "access_token" not in result:
         error_desc = result.get("error_description", "Sin descripción")
         raise ValueError(f"No se pudo obtener el token de Azure AD: {error_desc}")
+
+    expires_in = result.get("expires_in", 3600)
+    _token_cache[client_id] = {
+        "token": result["access_token"],
+        "expires_at": now + expires_in
+    }
     return result["access_token"]
+
+
+def get_sharepoint_drive_id(
+    session: requests.Session,
+    token: str,
+    sharepoint_host: str,
+    site_path: str
+) -> str:
+    """
+    Resuelve y cachea el drive_id de la biblioteca de documentos predeterminada de SharePoint.
+    Evita consultar repetidamente el endpoint de sitios y drives de Graph API.
+    """
+    cache_key = f"{sharepoint_host}:{site_path}"
+    if cache_key in _site_drive_cache:
+        return _site_drive_cache[cache_key]
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # 1. Obtener ID del sitio SharePoint
+    site_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_host}:{site_path}"
+    site_resp = session.get(site_url, headers=headers, timeout=30)
+    if site_resp.status_code != 200:
+        raise ValueError(
+            f"No se pudo obtener el sitio de SharePoint. "
+            f"Status: {site_resp.status_code} — {site_resp.text[:300]}"
+        )
+    site_id = site_resp.json()["id"]
+
+    # 2. Obtener directamente la biblioteca de documentos predeterminada del sitio (/sites/{site_id}/drive)
+    drive_resp = session.get(f"https://graph.microsoft.com/v1.0/sites/{site_id}/drive", headers=headers, timeout=30)
+    if drive_resp.status_code == 200:
+        drive_id = drive_resp.json()["id"]
+    else:
+        # Fallback a listar bibliotecas si el drive default difiere
+        drives_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
+        drives_resp = session.get(drives_url, headers=headers, timeout=30)
+        if drives_resp.status_code != 200:
+            raise ValueError(
+                f"No se pudo listar las bibliotecas del sitio. "
+                f"Status: {drives_resp.status_code} — {drives_resp.text[:300]}"
+            )
+        drives = drives_resp.json().get("value", [])
+        target_drive = next(
+            (d for d in drives if d.get("name", "").upper() in ("DOCUMENTOS COMPARTIDOS", "DOCUMENTS", "SHARED DOCUMENTS")),
+            drives[0] if drives else None
+        )
+        if not target_drive:
+            raise ValueError("No se encontró ninguna biblioteca de documentos en el sitio de SharePoint.")
+        drive_id = target_drive["id"]
+
+    _site_drive_cache[cache_key] = drive_id
+    return drive_id
 
 
 def download_excel_from_sharepoint(
@@ -120,66 +189,23 @@ def download_excel_from_sharepoint(
     client_secret: str,
     sharepoint_host: str,
     site_path: str,
-    file_drive_path: str
+    file_drive_path: str,
+    session: requests.Session = None
 ) -> io.BytesIO:
     """
-    Descarga el archivo Excel desde SharePoint usando Microsoft Graph API.
-
-    Parámetros en Streamlit Secrets:
-        SHAREPOINT_HOST      = "sanvicenteces2.sharepoint.com"
-        SHAREPOINT_SITE_PATH = "/sites/CENTRALDENOVEDADESCONSOLIDADOS"
-        SHAREPOINT_FILE_PATH = "/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
-                               (ruta dentro de la biblioteca, sin prefijo de sitio ni de biblioteca)
-
-    Retorna un BytesIO listo para pasarle a load_and_clean_data().
+    Descarga el archivo Excel desde SharePoint usando Microsoft Graph API de forma optimizada.
+    Aprovecha la reutilización de token, sesión persistente y caché de drive.
     """
     token = get_access_token(tenant_id, client_id, client_secret)
-    headers = {"Authorization": f"Bearer {token}"}
+    s = session or requests.Session()
+    drive_id = get_sharepoint_drive_id(s, token, sharepoint_host, site_path)
 
-    # 1. Obtener el ID del sitio de SharePoint
-    site_url = f"https://graph.microsoft.com/v1.0/sites/{sharepoint_host}:{site_path}"
-    site_resp = requests.get(site_url, headers=headers, timeout=30)
-    if site_resp.status_code != 200:
-        raise ValueError(
-            f"No se pudo obtener el sitio de SharePoint. "
-            f"Status: {site_resp.status_code} — {site_resp.text[:300]}"
-        )
-    site_id = site_resp.json()["id"]
-
-    # 2. Obtener el drive raíz (Documentos compartidos) del sitio
-    drives_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives"
-    drives_resp = requests.get(drives_url, headers=headers, timeout=30)
-    if drives_resp.status_code != 200:
-        raise ValueError(
-            f"No se pudo listar las bibliotecas del sitio. "
-            f"Status: {drives_resp.status_code} — {drives_resp.text[:300]}"
-        )
-    drives = drives_resp.json().get("value", [])
-
-    # Buscar el drive "Documentos compartidos" / "Documents"; si no, usar el primero
-    target_drive = None
-    for d in drives:
-        drive_name = d.get("name", "").upper()
-        if drive_name in ("DOCUMENTOS COMPARTIDOS", "DOCUMENTS", "SHARED DOCUMENTS"):
-            target_drive = d
-            break
-    if target_drive is None and drives:
-        target_drive = drives[0]
-    if target_drive is None:
-        raise ValueError("No se encontró ninguna biblioteca de documentos en el sitio de SharePoint.")
-
-    drive_id = target_drive["id"]
-
-    # 3. Usar directamente la ruta dentro del drive (sin prefijo de sitio ni de biblioteca)
-    # Ejemplo: "/CONSOLIDADOS/CONSOLIDADO 2026/CONSOLIDADO 2026.xlsx"
     path_in_drive = file_drive_path.lstrip("/")
-
-    # 4. Descargar el archivo por su ruta dentro del drive
-    import urllib.parse
     encoded_path = urllib.parse.quote(path_in_drive)
     content_url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/root:/{encoded_path}:/content"
-    response = requests.get(content_url, headers=headers, timeout=60)
+    headers = {"Authorization": f"Bearer {token}"}
 
+    response = s.get(content_url, headers=headers, timeout=90)
     if response.status_code != 200:
         raise ValueError(
             f"Error al descargar el archivo desde SharePoint. "
@@ -188,32 +214,6 @@ def download_excel_from_sharepoint(
         )
     return io.BytesIO(response.content)
 
-
-
-def download_excel_from_onedrive(
-    tenant_id: str,
-    client_id: str,
-    client_secret: str,
-    drive_id: str,
-    file_id: str
-) -> io.BytesIO:
-    """
-    Descarga el archivo Excel desde OneDrive/SharePoint usando Microsoft Graph API
-    mediante drive_id y file_id (método clásico).
-    Retorna un BytesIO listo para pasarle a load_and_clean_data().
-    """
-    token = get_access_token(tenant_id, client_id, client_secret)
-    url = f"https://graph.microsoft.com/v1.0/drives/{drive_id}/items/{file_id}/content"
-    headers = {"Authorization": f"Bearer {token}"}
-
-    response = requests.get(url, headers=headers, timeout=60)
-
-    if response.status_code != 200:
-        raise ValueError(
-            f"Error al descargar el archivo desde OneDrive. "
-            f"Status: {response.status_code} — {response.text[:200]}"
-        )
-    return io.BytesIO(response.content)
 
 def load_and_clean_data(file_source, preferred_sheet=None):
     """
@@ -608,7 +608,7 @@ def get_restriction_dict(df_ref=None, df_super=None):
     return restr_dict
 
 
-def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_unfiltered=None, plaza_fija_dates=None):
+def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_unfiltered=None, plaza_fija_dates=None, allowed_months=None):
     """
     Genera un DataFrame a nivel diario para cada médico activo en el mes,
     cubriendo todo su periodo activo.
@@ -642,18 +642,21 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
             for _, row in df_worked.iterrows()
         }
     
-    # Determinar los meses permitidos según el filtro de Streamlit
-    allowed_months = None
-    try:
-        import streamlit as st
-        if 'mes_sel' in st.session_state and st.session_state.mes_sel:
-            inv_map = {v.upper(): k for k, v in MESES_MAP.items()}
-            allowed_months = [inv_map[m.upper()] for m in st.session_state.mes_sel if m.upper() in inv_map]
-    except Exception:
-        pass
-        
+    # Determinar los meses permitidos sin acoplamiento a interfaz
     if allowed_months is None:
-        allowed_months = list(MESES_MAP.keys())
+        if not df.empty and 'MES_NUM' in df.columns:
+            allowed_months = set(df['MES_NUM'].dropna().astype(int).unique())
+        else:
+            allowed_months = set(MESES_MAP.keys())
+    elif isinstance(allowed_months, (list, tuple, set)):
+        inv_map = {v.upper(): k for k, v in MESES_MAP.items()}
+        cleaned_months = set()
+        for m in allowed_months:
+            if isinstance(m, int):
+                cleaned_months.add(m)
+            elif str(m).upper() in inv_map:
+                cleaned_months.add(inv_map[str(m).upper()])
+        allowed_months = cleaned_months or set(MESES_MAP.keys())
 
     # Obtener médicos activos en el df filtrado
     active_medicos = df[['CEDULA_FINAL', 'NOMBRE SUPER VALIDADO']].drop_duplicates()
@@ -832,12 +835,12 @@ def get_active_daily_df(df, daily_targets, monthly_targets, df_super=None, df_un
     return df_res
 
 
-def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plaza_fija_dates=None):
+def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plaza_fija_dates=None, allowed_months=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Cédula, Nombre y Mes.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates, allowed_months=allowed_months)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO', 'MES', 'MES_NUM',
@@ -870,12 +873,12 @@ def get_consolidated_hours(df, daily_targets=None, monthly_targets=None, df_supe
     grouped = grouped.sort_values(by=['MES_NUM', 'NOMBRE SUPER VALIDADO']).reset_index(drop=True)
     return grouped
 
-def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plaza_fija_dates=None):
+def get_consolidated_hours_by_date(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plaza_fija_dates=None, allowed_months=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Fecha (YYYY-MM-DD), Cédula y Nombre.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates, allowed_months=allowed_months)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'FECHA_STR', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
@@ -968,12 +971,12 @@ def load_calendar_targets(file_source):
     return monthly_targets, daily_targets
 
 
-def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plaza_fija_dates=None):
+def get_consolidated_hours_by_week(df, daily_targets=None, monthly_targets=None, df_super=None, df_unfiltered=None, plaza_fija_dates=None, allowed_months=None):
     """
     Agrupa y sumariza las horas totales trabajadas por Semana, Cédula y Nombre.
     """
     if daily_targets is not None and monthly_targets is not None:
-        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates)
+        df_daily = get_active_daily_df(df, daily_targets, monthly_targets, df_super, df_unfiltered=df_unfiltered, plaza_fija_dates=plaza_fija_dates, allowed_months=allowed_months)
         if df_daily.empty:
             return pd.DataFrame(columns=[
                 'SEMANA_INICIO', 'CEDULA_FINAL', 'NOMBRE SUPER VALIDADO',
