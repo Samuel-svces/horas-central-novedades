@@ -430,10 +430,11 @@ custom_css = r"""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
     
-    html, body, [class*="st-"], [class*="stWidget"], [class*="stSelectbox"], [class*="stMultiSelect"],
-    [class*="stMarkdown"], label, p,
-    div[role="listbox"] *, button, .stButton button, [data-testid="stSidebar"] * {
-        font-family: 'Plus Jakarta Sans', sans-serif; color: #202124 !important;
+    html, body, [class*="stMarkdown"], label, p, [data-testid="stSidebar"] * {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    body, p, label {
+        color: #202124 !important;
     }
     [data-baseweb="select"] { font-family: 'Plus Jakarta Sans', sans-serif; }
     
@@ -665,10 +666,11 @@ custom_css = r"""
     div[data-testid="stMultiSelect"] [data-baseweb="select"],
     div[data-testid="stMultiSelect"] [data-baseweb="select"] > div { background-color: #ffffff !important; }
     /* ── Tags de multiselect (Mes y Supernumerario) ──────────────────── */
-    div[data-testid*="MultiSelect"] [data-baseweb="tag"],
-    div[data-testid*="multiselect"] [data-baseweb="tag"],
-    div[data-baseweb="select"] [data-baseweb="tag"],
-    span[data-baseweb="tag"],
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"],
+    div[data-testid*="stMultiSelect" i] span[data-baseweb="tag"],
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="tag"],
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] span[role="button"],
     [data-baseweb="tag"] {
         background-color: #199596 !important;
         background: #199596 !important;
@@ -677,38 +679,73 @@ custom_css = r"""
         flex-shrink: 0 !important;
         height: 26px !important; min-height: 26px !important; max-height: 26px !important;
         padding: 0 6px 0 8px !important; margin: 0 4px 0 0 !important;
-        display: inline-flex !important; align-items: center !important; }
-    /* Letra blanca nítida para el contenido de los tags seleccionados */
-    div[data-testid*="MultiSelect"] [data-baseweb="tag"] *,
-    div[data-testid*="multiselect"] [data-baseweb="tag"] *,
-    div[data-baseweb="select"] [data-baseweb="tag"] *,
-    div[data-baseweb="select"] span[data-baseweb="tag"] *,
-    span[data-baseweb="tag"] *,
-    span[data-baseweb="tag"] span,
+        display: inline-flex !important; align-items: center !important;
+        color: #ffffff !important;
+    }
+    /* Letra blanca nítida para TODO el texto de los tags seleccionados */
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"],
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] *,
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] span,
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] div,
+    div[data-testid*="stMultiSelect" i] span[data-baseweb="tag"],
+    div[data-testid*="stMultiSelect" i] span[data-baseweb="tag"] *,
+    div[data-testid*="stMultiSelect" i] span[data-baseweb="tag"] span,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span *,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span span,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] span[role="button"],
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] span[role="button"] *,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] span[role="button"] span,
+    [data-baseweb="tag"],
     [data-baseweb="tag"] *,
     [data-baseweb="tag"] span {
         color: #ffffff !important;
         -webkit-text-fill-color: #ffffff !important;
-        font-size: 12px !important; font-weight: 600 !important;
-        white-space: nowrap !important; line-height: 1 !important;
-        max-width: none !important; overflow: visible !important; text-overflow: unset !important; }
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        font-size: 12.5px !important; font-weight: 600 !important;
+        white-space: nowrap !important; line-height: 1.2 !important;
+        max-width: none !important; overflow: visible !important; text-overflow: unset !important;
+    }
     /* Icono de cerrar (x) en blanco */
-    div[data-testid*="MultiSelect"] [data-baseweb="tag"] svg,
-    div[data-testid*="MultiSelect"] [data-baseweb="tag"] svg path,
-    div[data-baseweb="select"] [data-baseweb="tag"] svg,
-    div[data-baseweb="select"] [data-baseweb="tag"] svg path,
-    span[data-baseweb="tag"] svg,
-    span[data-baseweb="tag"] svg path,
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] svg,
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] svg *,
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] svg path,
+    div[data-testid*="stMultiSelect" i] span[data-baseweb="tag"] svg,
+    div[data-testid*="stMultiSelect" i] span[data-baseweb="tag"] svg path,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span svg,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span svg *,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span path,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] span[role="button"] svg,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] span[role="button"] path,
     [data-baseweb="tag"] svg,
+    [data-baseweb="tag"] svg *,
     [data-baseweb="tag"] svg path {
         fill: #ffffff !important;
         color: #ffffff !important;
-        stroke: #ffffff !important; }
-    div[data-testid*="MultiSelect"] [data-baseweb="tag"]:hover,
-    [data-baseweb="select"] [data-baseweb="tag"]:hover,
+        stroke: #ffffff !important;
+    }
+    div[data-testid*="stMultiSelect" i] [data-baseweb="tag"]:hover,
+    div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span:hover,
     [data-baseweb="tag"]:hover {
         background-color: #147a7b !important;
-        background: #147a7b !important; }
+        background: #147a7b !important;
+    }
+    /* Opciones dentro del dropdown desplegable (fondo blanco, letra oscura legible) */
+    ul[role="listbox"], ul[role="listbox"] li, ul[role="listbox"] *,
+    div[data-baseweb="menu"], div[data-baseweb="menu"] * {
+        color: #202124 !important;
+        -webkit-text-fill-color: #202124 !important;
+    }
+    ul[role="listbox"] li:hover, ul[role="listbox"] li[aria-selected="true"],
+    div[data-baseweb="menu"] li:hover {
+        background-color: #f0fdfa !important;
+        color: #147a7b !important;
+        -webkit-text-fill-color: #147a7b !important;
+    }
+    ul[role="listbox"] li:hover *, ul[role="listbox"] li[aria-selected="true"] * {
+        color: #147a7b !important;
+        -webkit-text-fill-color: #147a7b !important;
+    }
     /* ── Panel de filtros ──────────────────────────────────────────────── */
     .filter-panel-marker { display: none !important; }
     div[data-testid="stVerticalBlock"]:has(.filter-panel-marker) {
@@ -1112,7 +1149,26 @@ meses_disponibles = sorted(
 # ── Panel de filtros ──────────────────────────────────────────────────────────
 
 with st.container(border=True):
-    st.markdown('<div class="filter-panel-marker"></div>', unsafe_allow_html=True)
+    st.markdown('''<div class="filter-panel-marker"></div>
+    <style>
+        div[data-testid*="stMultiSelect" i] [data-baseweb="tag"],
+        div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] *,
+        div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span,
+        div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span * {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+            fill: #ffffff !important;
+            font-weight: 600 !important;
+        }
+        div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] svg,
+        div[data-testid*="stMultiSelect" i] [data-baseweb="tag"] svg *,
+        div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span svg,
+        div[data-testid*="stMultiSelect" i] div[data-baseweb="select"] > div > div > span svg * {
+            color: #ffffff !important;
+            fill: #ffffff !important;
+            stroke: #ffffff !important;
+        }
+    </style>''', unsafe_allow_html=True)
     c1, c2, c3, c4, c5, c6 = st.columns([3, 3, 3, 0.6, 0.6, 0.6], gap="small", vertical_alignment="bottom")
 
     with c1:
