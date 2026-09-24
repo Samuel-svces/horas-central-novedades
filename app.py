@@ -431,10 +431,11 @@ custom_css = r"""
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
     
     html, body, [class*="st-"], [class*="stWidget"], [class*="stSelectbox"], [class*="stMultiSelect"],
-    [class*="stMarkdown"], label, p, [data-baseweb="select"] *,
+    [class*="stMarkdown"], label, p,
     div[role="listbox"] *, button, .stButton button, [data-testid="stSidebar"] * {
         font-family: 'Plus Jakarta Sans', sans-serif; color: #202124 !important;
     }
+    [data-baseweb="select"] { font-family: 'Plus Jakarta Sans', sans-serif; }
     
     h1, h2, h3, h4, h5, h6 {
         font-family: 'Outfit', sans-serif !important;
@@ -664,9 +665,10 @@ custom_css = r"""
     div[data-testid="stMultiSelect"] [data-baseweb="select"],
     div[data-testid="stMultiSelect"] [data-baseweb="select"] > div { background-color: #ffffff !important; }
     /* ── Tags de multiselect (Mes y Supernumerario) ──────────────────── */
-    div[data-testid="stMultiSelect"] [data-baseweb="tag"],
-    div[data-testid="stMultiSelect"] span[data-baseweb="tag"],
+    div[data-testid*="MultiSelect"] [data-baseweb="tag"],
+    div[data-testid*="multiselect"] [data-baseweb="tag"],
     div[data-baseweb="select"] [data-baseweb="tag"],
+    span[data-baseweb="tag"],
     [data-baseweb="tag"] {
         background-color: #199596 !important;
         background: #199596 !important;
@@ -676,9 +678,13 @@ custom_css = r"""
         height: 26px !important; min-height: 26px !important; max-height: 26px !important;
         padding: 0 6px 0 8px !important; margin: 0 4px 0 0 !important;
         display: inline-flex !important; align-items: center !important; }
-    div[data-testid="stMultiSelect"] [data-baseweb="tag"] *,
-    div[data-testid="stMultiSelect"] [data-baseweb="tag"] span,
+    /* Letra blanca nítida para el contenido de los tags seleccionados */
+    div[data-testid*="MultiSelect"] [data-baseweb="tag"] *,
+    div[data-testid*="multiselect"] [data-baseweb="tag"] *,
     div[data-baseweb="select"] [data-baseweb="tag"] *,
+    div[data-baseweb="select"] span[data-baseweb="tag"] *,
+    span[data-baseweb="tag"] *,
+    span[data-baseweb="tag"] span,
     [data-baseweb="tag"] *,
     [data-baseweb="tag"] span {
         color: #ffffff !important;
@@ -686,14 +692,21 @@ custom_css = r"""
         font-size: 12px !important; font-weight: 600 !important;
         white-space: nowrap !important; line-height: 1 !important;
         max-width: none !important; overflow: visible !important; text-overflow: unset !important; }
-    div[data-testid="stMultiSelect"] [data-baseweb="tag"] svg,
-    div[data-testid="stMultiSelect"] [data-baseweb="tag"] svg path,
+    /* Icono de cerrar (x) en blanco */
+    div[data-testid*="MultiSelect"] [data-baseweb="tag"] svg,
+    div[data-testid*="MultiSelect"] [data-baseweb="tag"] svg path,
+    div[data-baseweb="select"] [data-baseweb="tag"] svg,
+    div[data-baseweb="select"] [data-baseweb="tag"] svg path,
+    span[data-baseweb="tag"] svg,
+    span[data-baseweb="tag"] svg path,
     [data-baseweb="tag"] svg,
     [data-baseweb="tag"] svg path {
         fill: #ffffff !important;
         color: #ffffff !important;
         stroke: #ffffff !important; }
-    div[data-testid="stMultiSelect"] [data-baseweb="tag"]:hover {
+    div[data-testid*="MultiSelect"] [data-baseweb="tag"]:hover,
+    [data-baseweb="select"] [data-baseweb="tag"]:hover,
+    [data-baseweb="tag"]:hover {
         background-color: #147a7b !important;
         background: #147a7b !important; }
     /* ── Panel de filtros ──────────────────────────────────────────────── */
